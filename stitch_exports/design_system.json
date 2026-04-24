@@ -1,0 +1,128 @@
+{
+  "name": "assets/85feb7231a1b4df38bfa1fe93d9807e7",
+  "designSystem": {
+    "displayName": "TruthLens",
+    "styleGuidelines": "## Brand & Style\n\nThis design system is built to evoke the precision of a high-tech laboratory combined with the velocity of modern AI. The aesthetic centers on **Glassmorphism**, using translucent layers and vibrant background blurs to suggest depth and clarity\u2014mirroring the product's mission to \"see through\" misinformation.\n\nThe brand personality is authoritative yet visionary. By blending deep, immersive backgrounds with neon-reactive elements, the system establishes a \"Control Center\" atmosphere. It prioritizes high legibility and a sophisticated dark mode to reduce cognitive load during complex data analysis, ensuring users feel empowered by a professional and cutting-edge tool.\n\n## Layout & Spacing\n\nThe system employs a **12-column fluid grid** for dashboard views, allowing content to scale while maintaining strict alignment. \n\n- **Grid:** Use 24px gutters to allow the \"glass\" cards enough breathing room to display their background blurs without visual clutter.\n- **Rhythm:** An 8px linear scaling system governs all internal padding and margins.\n- **Safe Areas:** Maintain a minimum 32px outer margin on desktop to ensure the UI feels expansive and premium rather than cramped.\n- **Density:** Use \"Tight\" density for data tables (8px cell padding) and \"Spacious\" density for article analysis views (24px+ padding).\n\n## Elevation & Depth\n\nDepth is communicated through **translucency and luminosity** rather than traditional black shadows.\n\n1.  **Base Layer:** The deepest background level.\n2.  **Mid Layer (Glass):** UI cards use a 40px backdrop-filter blur with a 1px solid border at 10% white opacity. This creates a \"frosted\" look.\n3.  **Top Layer (Floating):** Popovers and modals use a slightly higher opacity glass (10-15%) and a soft, diffused outer glow tinted with the Primary Neon Cyan or Purple (0.15 alpha, 30px blur).\n4.  **Interactive States:** On hover, elements should increase their background opacity slightly and brighten their 1px border to create a \"lit from within\" effect.\n\n## Components\n\n- **Buttons:** Primary buttons feature a solid Neon Cyan fill with black text for high contrast. Secondary buttons use a \"Ghost\" style with a 1px Neon Cyan border and no fill until hover.\n- **Input Fields:** Semi-transparent dark backgrounds with a subtle bottom-only or full-outline border. Focus states trigger a Neon Cyan glow.\n- **Cards:** The core of the UI. Must feature `backdrop-filter: blur(20px)` and a thin, light-colored stroke to define edges against the dark background.\n- **Verification Chips:** Small, pill-shaped indicators. \"True\" uses a Cyan glow; \"False\" uses a Magenta glow; \"Unverified\" uses a Purple gradient.\n- **Analysis Progress:** Linear progress bars should use a Purple-to-Cyan gradient, appearing to \"charge\" as the AI scans data.\n- **Source Lists:** Use clean, monochromatic lists with high-contrast white text and subtle dividers (1px, 5% white opacity).",
+    "theme": {
+      "colorMode": "DARK",
+      "font": "SPACE_GROTESK",
+      "roundness": "ROUND_EIGHT",
+      "customColor": "#00F2FF",
+      "headlineFont": "SPACE_GROTESK",
+      "bodyFont": "INTER",
+      "labelFont": "INTER",
+      "namedColors": {
+        "surface": "#111221",
+        "inverse_primary": "#00696f",
+        "surface_container_low": "#191a2a",
+        "on_secondary_fixed_variant": "#6200bc",
+        "on_secondary": "#450086",
+        "secondary_fixed_dim": "#d8b9ff",
+        "surface_bright": "#373849",
+        "error": "#ffb4ab",
+        "primary": "#e1fdff",
+        "background": "#111221",
+        "on_surface": "#e2e0f7",
+        "surface_container_lowest": "#0c0d1c",
+        "secondary_container": "#6e06d0",
+        "tertiary_fixed_dim": "#d0bcff",
+        "primary_fixed_dim": "#00dbe7",
+        "surface_container_high": "#282939",
+        "secondary_fixed": "#eddcff",
+        "primary_fixed": "#74f5ff",
+        "on_primary": "#00363a",
+        "inverse_on_surface": "#2e2f40",
+        "error_container": "#93000a",
+        "tertiary_container": "#e2d4ff",
+        "inverse_surface": "#e2e0f7",
+        "on_surface_variant": "#b9cacb",
+        "secondary": "#d8b9ff",
+        "tertiary": "#fcf5ff",
+        "surface_dim": "#111221",
+        "outline": "#849495",
+        "surface_container_highest": "#333344",
+        "on_secondary_container": "#d5b5ff",
+        "on_tertiary_fixed": "#23005c",
+        "on_tertiary_fixed_variant": "#5600ca",
+        "primary_container": "#00f2ff",
+        "on_error_container": "#ffdad6",
+        "on_primary_container": "#006a71",
+        "on_tertiary": "#3b0091",
+        "surface_container": "#1d1e2e",
+        "on_primary_fixed_variant": "#004f54",
+        "surface_variant": "#333344",
+        "on_primary_fixed": "#002022",
+        "surface_tint": "#00dbe7",
+        "on_error": "#690005",
+        "on_tertiary_container": "#721aff",
+        "on_background": "#e2e0f7",
+        "outline_variant": "#3a494b",
+        "on_secondary_fixed": "#290055",
+        "tertiary_fixed": "#e9ddff"
+      },
+      "designMd": "---\nname: TruthLens\ncolors:\n  surface: '#111221'\n  surface-dim: '#111221'\n  surface-bright: '#373849'\n  surface-container-lowest: '#0c0d1c'\n  surface-container-low: '#191a2a'\n  surface-container: '#1d1e2e'\n  surface-container-high: '#282939'\n  surface-container-highest: '#333344'\n  on-surface: '#e2e0f7'\n  on-surface-variant: '#b9cacb'\n  inverse-surface: '#e2e0f7'\n  inverse-on-surface: '#2e2f40'\n  outline: '#849495'\n  outline-variant: '#3a494b'\n  surface-tint: '#00dbe7'\n  primary: '#e1fdff'\n  on-primary: '#00363a'\n  primary-container: '#00f2ff'\n  on-primary-container: '#006a71'\n  inverse-primary: '#00696f'\n  secondary: '#d8b9ff'\n  on-secondary: '#450086'\n  secondary-container: '#6e06d0'\n  on-secondary-container: '#d5b5ff'\n  tertiary: '#fcf5ff'\n  on-tertiary: '#3b0091'\n  tertiary-container: '#e2d4ff'\n  on-tertiary-container: '#721aff'\n  error: '#ffb4ab'\n  on-error: '#690005'\n  error-container: '#93000a'\n  on-error-container: '#ffdad6'\n  primary-fixed: '#74f5ff'\n  primary-fixed-dim: '#00dbe7'\n  on-primary-fixed: '#002022'\n  on-primary-fixed-variant: '#004f54'\n  secondary-fixed: '#eddcff'\n  secondary-fixed-dim: '#d8b9ff'\n  on-secondary-fixed: '#290055'\n  on-secondary-fixed-variant: '#6200bc'\n  tertiary-fixed: '#e9ddff'\n  tertiary-fixed-dim: '#d0bcff'\n  on-tertiary-fixed: '#23005c'\n  on-tertiary-fixed-variant: '#5600ca'\n  background: '#111221'\n  on-background: '#e2e0f7'\n  surface-variant: '#333344'\ntypography:\n  h1:\n    fontFamily: Space Grotesk\n    fontSize: 48px\n    fontWeight: '700'\n    lineHeight: '1.1'\n    letterSpacing: -0.02em\n  h2:\n    fontFamily: Space Grotesk\n    fontSize: 32px\n    fontWeight: '600'\n    lineHeight: '1.2'\n    letterSpacing: -0.01em\n  h3:\n    fontFamily: Space Grotesk\n    fontSize: 24px\n    fontWeight: '500'\n    lineHeight: '1.3'\n    letterSpacing: '0'\n  body-lg:\n    fontFamily: Inter\n    fontSize: 18px\n    fontWeight: '400'\n    lineHeight: '1.6'\n    letterSpacing: '0'\n  body-md:\n    fontFamily: Inter\n    fontSize: 16px\n    fontWeight: '400'\n    lineHeight: '1.5'\n    letterSpacing: '0'\n  label-caps:\n    fontFamily: Space Grotesk\n    fontSize: 12px\n    fontWeight: '600'\n    lineHeight: '1'\n    letterSpacing: 0.1em\nrounded:\n  sm: 0.25rem\n  DEFAULT: 0.5rem\n  md: 0.75rem\n  lg: 1rem\n  xl: 1.5rem\n  full: 9999px\nspacing:\n  unit: 4px\n  xs: 4px\n  sm: 8px\n  md: 16px\n  lg: 24px\n  xl: 48px\n  gutter: 24px\n  margin: 32px\n  max_width: 1440px\n---\n\n## Brand & Style\n\nThis design system is built to evoke the precision of a high-tech laboratory combined with the velocity of modern AI. The aesthetic centers on **Glassmorphism**, using translucent layers and vibrant background blurs to suggest depth and clarity\u2014mirroring the product's mission to \"see through\" misinformation.\n\nThe brand personality is authoritative yet visionary. By blending deep, immersive backgrounds with neon-reactive elements, the system establishes a \"Control Center\" atmosphere. It prioritizes high legibility and a sophisticated dark mode to reduce cognitive load during complex data analysis, ensuring users feel empowered by a professional and cutting-edge tool.\n\n## Colors\n\nThe palette is anchored by **Deep Navy (#05060F)**, providing a void-like canvas that allows neon elements to pop. \n\n- **Primary Action:** Neon Cyan (#00F2FF) is reserved for critical interactions, progress indicators, and \"Verified\" statuses.\n- **Accents:** A gradient transition from Purple (#9D50FF) to Deep Violet (#6E00FF) is used for data visualization, AI processing states, and high-level brand moments.\n- **Surface:** Components utilize semi-transparent fills with subtle white borders (3-8% opacity) to create the glass effect against the dark backdrop.\n- **Status:** Use Neon Cyan for success/truth, Purple for neutral/processing, and a sharp Magenta for warnings or misinformation.\n\n## Typography\n\nThis design system utilizes a dual-font strategy. **Space Grotesk** is used for headlines to provide a technical, geometric edge that feels futuristic. Its slight quirkiness reinforces the \"cutting-edge\" vibe.\n\n**Inter** is utilized for all body copy and UI labels to ensure maximum readability and a professional, neutral tone. For data-heavy views, Inter\u2019s tabular numbers and clear glyph distinctions are vital for fact-checking accuracy. Use \"Label-Caps\" for metadata, category tags, and secondary navigation items to maintain a structured, organized hierarchy.\n\n## Layout & Spacing\n\nThe system employs a **12-column fluid grid** for dashboard views, allowing content to scale while maintaining strict alignment. \n\n- **Grid:** Use 24px gutters to allow the \"glass\" cards enough breathing room to display their background blurs without visual clutter.\n- **Rhythm:** An 8px linear scaling system governs all internal padding and margins.\n- **Safe Areas:** Maintain a minimum 32px outer margin on desktop to ensure the UI feels expansive and premium rather than cramped.\n- **Density:** Use \"Tight\" density for data tables (8px cell padding) and \"Spacious\" density for article analysis views (24px+ padding).\n\n## Elevation & Depth\n\nDepth is communicated through **translucency and luminosity** rather than traditional black shadows.\n\n1.  **Base Layer:** The deepest background level.\n2.  **Mid Layer (Glass):** UI cards use a 40px backdrop-filter blur with a 1px solid border at 10% white opacity. This creates a \"frosted\" look.\n3.  **Top Layer (Floating):** Popovers and modals use a slightly higher opacity glass (10-15%) and a soft, diffused outer glow tinted with the Primary Neon Cyan or Purple (0.15 alpha, 30px blur).\n4.  **Interactive States:** On hover, elements should increase their background opacity slightly and brighten their 1px border to create a \"lit from within\" effect.\n\n## Shapes\n\nThe design system adopts a **Rounded** aesthetic to balance the technical \"coldness\" of the dark mode. \n\n- **Standard Elements:** Buttons, input fields, and small cards use a 0.5rem (8px) radius.\n- **Container Elements:** Main content areas and large feature cards use a 1rem (16px) radius to emphasize the glass pane metaphor.\n- **Status Indicators:** Pills and tags should use a fully rounded (999px) radius to distinguish them from functional UI components.\n\n## Components\n\n- **Buttons:** Primary buttons feature a solid Neon Cyan fill with black text for high contrast. Secondary buttons use a \"Ghost\" style with a 1px Neon Cyan border and no fill until hover.\n- **Input Fields:** Semi-transparent dark backgrounds with a subtle bottom-only or full-outline border. Focus states trigger a Neon Cyan glow.\n- **Cards:** The core of the UI. Must feature `backdrop-filter: blur(20px)` and a thin, light-colored stroke to define edges against the dark background.\n- **Verification Chips:** Small, pill-shaped indicators. \"True\" uses a Cyan glow; \"False\" uses a Magenta glow; \"Unverified\" uses a Purple gradient.\n- **Analysis Progress:** Linear progress bars should use a Purple-to-Cyan gradient, appearing to \"charge\" as the AI scans data.\n- **Source Lists:** Use clean, monochromatic lists with high-contrast white text and subtle dividers (1px, 5% white opacity).",
+      "colorVariant": "FIDELITY",
+      "overridePrimaryColor": "#00F2FF",
+      "overrideSecondaryColor": "#9D50FF",
+      "overrideTertiaryColor": "#6E00FF",
+      "overrideNeutralColor": "#0A0B1A",
+      "spacingScale": 2,
+      "typography": {
+        "h2": {
+          "fontFamily": "Space Grotesk",
+          "fontSize": "32px",
+          "fontWeight": "600",
+          "lineHeight": "1.2",
+          "letterSpacing": "-0.01em"
+        },
+        "body-md": {
+          "fontFamily": "Inter",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "1.5",
+          "letterSpacing": "0"
+        },
+        "h1": {
+          "fontFamily": "Space Grotesk",
+          "fontSize": "48px",
+          "fontWeight": "700",
+          "lineHeight": "1.1",
+          "letterSpacing": "-0.02em"
+        },
+        "label-caps": {
+          "fontFamily": "Space Grotesk",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "1",
+          "letterSpacing": "0.1em"
+        },
+        "body-lg": {
+          "fontFamily": "Inter",
+          "fontSize": "18px",
+          "fontWeight": "400",
+          "lineHeight": "1.6",
+          "letterSpacing": "0"
+        },
+        "h3": {
+          "fontFamily": "Space Grotesk",
+          "fontSize": "24px",
+          "fontWeight": "500",
+          "lineHeight": "1.3",
+          "letterSpacing": "0"
+        }
+      },
+      "spacing": {
+        "gutter": "24px",
+        "max_width": "1440px",
+        "margin": "32px",
+        "xl": "48px",
+        "xs": "4px",
+        "sm": "8px",
+        "unit": "4px",
+        "lg": "24px",
+        "md": "16px"
+      }
+    }
+  },
+  "version": "1"
+}
