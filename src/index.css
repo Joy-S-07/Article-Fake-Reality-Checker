@@ -1,57 +1,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL,GRAD,opsz@100..700,0..1,-50..200,20..48');
 @import "tailwindcss";
+@config "../tailwind.config.js";
 
-
-@theme {
-  --spacing-gutter: 24px;
-  --spacing-margin: 32px;
-  --spacing-unit: 4px;
-  --spacing-max_width: 1440px;
-  --spacing-sm: 8px;
-  --spacing-md: 16px;
-  --spacing-xs: 4px;
-  --spacing-lg: 24px;
-  --spacing-xl: 48px;
-
-  --font-body-md: "Inter", sans-serif;
-  --font-h1: "Space Grotesk", sans-serif;
-  --font-h2: "Space Grotesk", sans-serif;
-  --font-h3: "Space Grotesk", sans-serif;
-  --font-label-caps: "Space Grotesk", sans-serif;
-  --font-body-lg: "Inter", sans-serif;
-
-  --text-body-md: 16px;
-  --text-body-md--line-height: 1.5;
-  --text-body-md--font-weight: 400;
-
-  --text-h1: 48px;
-  --text-h1--line-height: 1.1;
-  --text-h1--letter-spacing: -0.02em;
-  --text-h1--font-weight: 700;
-
-  --text-h2: 32px;
-  --text-h2--line-height: 1.2;
-  --text-h2--letter-spacing: -0.01em;
-  --text-h2--font-weight: 600;
-
-  --text-h3: 24px;
-  --text-h3--line-height: 1.3;
-  --text-h3--font-weight: 500;
-
-  --text-label-caps: 12px;
-  --text-label-caps--line-height: 1;
-  --text-label-caps--letter-spacing: 0.1em;
-  --text-label-caps--font-weight: 600;
-
-  --text-body-lg: 18px;
-  --text-body-lg--line-height: 1.6;
-  --text-body-lg--font-weight: 400;
-
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.75rem;
-}
-
+/* ───────────────────────────────────────────────
+   LIGHT THEME (default)
+   ─────────────────────────────────────────────── */
 :root {
   --color-on-primary-fixed-variant: #004f54;
   --color-on-surface-variant: #4a5568;
@@ -96,12 +50,16 @@
   --color-outline-variant: #cbd5e1;
   --color-error-container: #fee2e2;
   --color-surface-container-high: #e2e8f0;
-  --color-primary-container: #ccfbfd;
+  --color-primary-container: #00bcd4;
   --color-on-error-container: #7f1d1d;
+  --color-on-primary-container: #ffffff;
   --color-primary: #008f99;
   --color-primary-fixed: #ccfbfd;
 }
 
+/* ───────────────────────────────────────────────
+   DARK THEME
+   ─────────────────────────────────────────────── */
 .dark {
   --color-on-primary-fixed-variant: #004f54;
   --color-on-surface-variant: #b9cacb;
@@ -152,16 +110,6 @@
   --color-primary-fixed: #74f5ff;
 }
 
-@layer base {
-  body {
-    cursor: none; /* Hide default cursor to use custom tracker */
-  }
-  
-  a, button, input, select, textarea, [role="button"] {
-    cursor: none;
-  }
-}
-
 /* Material Symbols Outlined setup */
 .material-symbols-outlined {
   font-variation-settings:
@@ -171,20 +119,41 @@
   'opsz' 24;
 }
 
-/* Custom Scrollbar for better aesthetic */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
 }
-
 ::-webkit-scrollbar-track {
-  background: #111221;
+  background: var(--color-background);
 }
-
 ::-webkit-scrollbar-thumb {
-  background: #373849;
+  background: var(--color-surface-container-high);
   border-radius: 4px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: #333344;
+  background: var(--color-surface-container-highest);
+}
+
+/* Hero Glow Animation */
+@keyframes glow-breathe {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.35;
+  }
+  25% {
+    transform: translate(-45%, -55%) scale(1.15);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translate(-55%, -45%) scale(1.05);
+    opacity: 0.4;
+  }
+  75% {
+    transform: translate(-50%, -50%) scale(1.2);
+    opacity: 0.6;
+  }
+}
+
+.hero-glow {
+  animation: glow-breathe 8s ease-in-out infinite;
 }

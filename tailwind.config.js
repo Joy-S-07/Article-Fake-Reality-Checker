@@ -56,22 +56,11 @@ export default {
         "primary": "var(--color-primary)",
         "primary-fixed": "var(--color-primary-fixed)"
       },
-      borderRadius: {
-        "DEFAULT": "0.25rem",
-        "lg": "0.5rem",
-        "xl": "0.75rem",
-        "full": "9999px"
-      },
       spacing: {
         "gutter": "24px",
         "margin": "32px",
         "unit": "4px",
-        "max_width": "1440px",
-        "sm": "8px",
-        "md": "16px",
-        "xs": "4px",
-        "lg": "24px",
-        "xl": "48px"
+        "max_width": "1440px"
       },
       fontFamily: {
         "body-md": ["Inter", "sans-serif"],

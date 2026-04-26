@@ -1,10 +1,13 @@
 import { Link } from 'react-router-dom';
+import { useState } from 'react';
 import SocialLoginButton from '../components/ui/SocialLoginButton';
 import InputGroup from '../components/ui/InputGroup';
 
 export default function SignIn() {
+  const [activeTab, setActiveTab] = useState('signin');
+
   return (
-    <main className="flex-grow flex items-center justify-center p-8 relative z-10 pt-24 min-h-screen">
+    <main className="flex-grow flex items-center justify-center px-6 py-8 relative z-10 pt-24 min-h-screen">
       {/* Ambient Background Lighting */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-primary-container/10 blur-[120px]"></div>
@@ -13,28 +16,58 @@ export default function SignIn() {
       </div>
 
       {/* Glassmorphic Login Card */}
-      <div className="w-full max-w-md bg-surface-container/40 backdrop-blur-[40px] border border-white/10 rounded-xl shadow-[0_16px_64px_rgba(0,0,0,0.6)] overflow-hidden relative">
+      <div className="w-full max-w-[440px] bg-surface-container/40 backdrop-blur-[40px] border border-outline-variant/20 rounded-xl shadow-[0_16px_64px_rgba(0,0,0,0.6)] overflow-hidden relative z-10">
         {/* Inner Glow Top */}
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary-container/50 to-transparent"></div>
-        <div className="p-8 flex flex-col gap-6">
+        <div className="px-8 py-10 flex flex-col gap-7">
           
           {/* Header / Brand */}
-          <div className="text-center flex flex-col gap-2 items-center">
-            <div className="w-12 h-12 rounded-full bg-surface-container-highest border border-white/10 flex items-center justify-center mb-1 shadow-[0_0_15px_rgba(0,242,255,0.15)]">
-              <span className="material-symbols-outlined text-primary-container" style={{ fontSize: '28px' }}>policy</span>
+          <div className="text-center flex flex-col gap-3 items-center">
+            <div className="w-14 h-14 rounded-full bg-surface-container-highest border border-outline-variant/20 flex items-center justify-center mb-1 shadow-[0_0_15px_rgba(0,242,255,0.15)]">
+              <span className="material-symbols-outlined text-primary-container" style={{ fontSize: '30px' }}>policy</span>
             </div>
             <h1 className="font-h2 text-h2 text-on-surface">TruthLens</h1>
-            <p className="font-body-md text-on-surface-variant">Initialize neural session.</p>
+            <p className="font-body-md text-on-surface-variant text-sm">
+              {activeTab === 'signin' ? 'Initialize neural session.' : 'Create your neural identity.'}
+            </p>
           </div>
 
-          {/* Tabs (UI Visual Only) */}
-          <div className="flex p-1 bg-surface-container-highest/50 rounded-lg border border-white/5">
-            <button className="flex-1 py-2 font-label-caps text-[12px] font-semibold tracking-[0.1em] rounded bg-surface/80 text-primary-container shadow-sm border border-white/5 transition-all">Sign In</button>
-            <button className="flex-1 py-2 font-label-caps text-[12px] font-semibold tracking-[0.1em] rounded text-on-surface-variant hover:text-on-surface transition-all">Sign Up</button>
+          {/* Tabs */}
+          <div className="flex p-1 bg-surface-container-highest/50 rounded-lg border border-outline-variant/10">
+            <button 
+              onClick={() => setActiveTab('signin')}
+              className={`flex-1 py-2.5 font-label-caps text-[12px] font-semibold tracking-[0.1em] rounded transition-all ${
+                activeTab === 'signin' 
+                  ? 'bg-surface/80 text-primary-container shadow-sm border border-outline-variant/10' 
+                  : 'text-on-surface-variant hover:text-on-surface border border-transparent'
+              }`}
+            >
+              Sign In
+            </button>
+            <button 
+              onClick={() => setActiveTab('signup')}
+              className={`flex-1 py-2.5 font-label-caps text-[12px] font-semibold tracking-[0.1em] rounded transition-all ${
+                activeTab === 'signup' 
+                  ? 'bg-surface/80 text-primary-container shadow-sm border border-outline-variant/10' 
+                  : 'text-on-surface-variant hover:text-on-surface border border-transparent'
+              }`}
+            >
+              Sign Up
+            </button>
           </div>
 
           {/* Form */}
-          <form className="flex flex-col gap-4">
+          <form className="flex flex-col gap-5">
+            {activeTab === 'signup' && (
+              <InputGroup 
+                id="fullname"
+                label="Full Name"
+                type="text"
+                placeholder="Agent Smith"
+                icon="person"
+              />
+            )}
+
             <InputGroup 
               id="email"
               label="Email Address"
@@ -50,27 +83,39 @@ export default function SignIn() {
               placeholder="••••••••"
               icon="key"
               rightElement={
-                <Link to="#" className="font-label-caps text-[12px] font-semibold tracking-[0.1em] text-primary-container hover:text-primary transition-colors">
-                  Recover?
-                </Link>
+                activeTab === 'signin' ? (
+                  <Link to="#" className="font-label-caps text-[12px] font-semibold tracking-[0.1em] text-primary-container hover:text-primary transition-colors">
+                    Recover?
+                  </Link>
+                ) : null
               }
             />
 
-            <button className="mt-2 w-full py-3 bg-primary-container text-on-primary-container font-label-caps text-[12px] font-semibold tracking-[0.1em] rounded-md hover:bg-primary transition-colors flex items-center justify-center gap-2 group" type="button">
-              Authenticate
+            {activeTab === 'signup' && (
+              <InputGroup 
+                id="confirm-password"
+                label="Confirm Password"
+                type="password"
+                placeholder="••••••••"
+                icon="key"
+              />
+            )}
+
+            <button className="mt-3 w-full py-3.5 bg-primary-container text-on-primary-container font-label-caps text-[12px] font-semibold tracking-[0.1em] rounded-lg hover:bg-primary transition-colors flex items-center justify-center gap-2 group" type="button">
+              {activeTab === 'signin' ? 'Authenticate' : 'Create Account'}
               <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform text-[18px]">arrow_forward</span>
             </button>
           </form>
 
           {/* Divider */}
-          <div className="flex items-center gap-2">
-            <div className="h-px bg-white/10 flex-grow"></div>
-            <span className="font-label-caps text-[12px] font-semibold tracking-[0.1em] text-outline-variant">OR CONTINUE WITH</span>
-            <div className="h-px bg-white/10 flex-grow"></div>
+          <div className="flex items-center gap-3">
+            <div className="h-px bg-outline-variant/30 flex-grow"></div>
+            <span className="font-label-caps text-[11px] font-semibold tracking-[0.1em] text-outline">OR CONTINUE WITH</span>
+            <div className="h-px bg-outline-variant/30 flex-grow"></div>
           </div>
 
           {/* Social Logins */}
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-3">
             <SocialLoginButton 
               provider="Google"
               icon={

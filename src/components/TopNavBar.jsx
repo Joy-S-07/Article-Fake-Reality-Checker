@@ -5,10 +5,9 @@ export default function TopNavBar() {
   const location = useLocation();
   const path = location.pathname;
 
-  const [isDark, setIsDark] = useState(true); // Default to dark mode
+  const [isDark, setIsDark] = useState(true);
 
   useEffect(() => {
-    // Initial check
     if (isDark) {
       document.documentElement.classList.add('dark');
     } else {
@@ -16,15 +15,13 @@ export default function TopNavBar() {
     }
   }, [isDark]);
 
-  const toggleTheme = () => {
-    setIsDark(!isDark);
-  };
+  const toggleTheme = () => setIsDark(!isDark);
 
   const isActive = (route) => path === route;
 
   return (
-    <nav className="fixed top-0 left-0 w-full z-50 flex justify-center bg-surface/60 backdrop-blur-2xl border-b border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.1)] transition-colors duration-300">
-      <div className="w-full max-w-max_width flex justify-between items-center px-8 h-16">
+    <nav className="fixed top-0 left-0 w-full z-50 flex justify-center bg-surface/60 backdrop-blur-2xl border-b border-outline-variant/10 shadow-[0_4px_30px_rgba(0,0,0,0.1)] transition-colors duration-300">
+      <div className="w-full max-w-[1440px] flex justify-between items-center px-8 h-16">
         <Link to="/" className="text-2xl font-bold tracking-tighter text-primary-fixed-dim drop-shadow-[0_0_8px_rgba(0,219,231,0.5)]">
           TruthLens
         </Link>
@@ -38,8 +35,9 @@ export default function TopNavBar() {
           <button onClick={toggleTheme} className="text-on-surface-variant hover:text-on-surface transition-colors p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/5">
             <span className="material-symbols-outlined">{isDark ? 'light_mode' : 'dark_mode'}</span>
           </button>
-          <Link to="/signin" className="hidden md:block font-h3 text-sm text-primary-fixed-dim px-4 py-2 hover:bg-white/5 transition-colors duration-300 rounded">Login</Link>
-          <Link to="/signin" className="font-h3 text-sm bg-primary-fixed-dim text-background px-4 py-2 rounded font-medium hover:brightness-110 shadow-[0_0_15px_rgba(0,219,231,0.3)] transition-all duration-300">Sign Up</Link>
+          <Link to="/signin" className="font-h3 text-sm bg-primary-fixed-dim text-background px-5 py-2 rounded-lg font-medium hover:brightness-110 shadow-[0_0_15px_rgba(0,219,231,0.3)] transition-all duration-300">
+            Sign In
+          </Link>
         </div>
       </div>
     </nav>

@@ -8,7 +8,7 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section className="gap-6 items-center min-h-[716px] mb-12 relative flex flex-col items-center justify-center text-center">
         {/* Decorative Glow */}
-        <div className="absolute top-1/2 left-1/4 -translate-y-1/2 -translate-x-1/2 w-96 h-96 bg-primary-container/20 rounded-full blur-[100px] pointer-events-none"></div>
+        <div className="absolute top-1/2 left-1/2 w-[500px] h-[500px] bg-primary-container/20 rounded-full blur-[120px] pointer-events-none hero-glow"></div>
         <div className="flex flex-col gap-6 z-10 items-center text-center w-full">
           <h1 className="font-h1 text-h1 text-on-surface">Detect Fake Information Instantly</h1>
           <p className="font-body-lg text-body-lg text-on-surface-variant max-w-[600px] mx-auto">
@@ -36,29 +36,33 @@ export default function LandingPage() {
             icon="psychology"
             title="AI Analysis"
             description="Deep learning models scan semantic context to identify logical fallacies and bias."
-            colorClass="bg-secondary-container text-secondary"
-            shadowClass="rgba(110,6,208,0.3)"
+            iconBgClass="bg-secondary-container/20"
+            iconTextClass="text-secondary"
+            glowColor="rgba(110,6,208,0.3)"
           />
           <FeatureCard 
             icon="image_search"
             title="Media Verification"
             description="Reverse searches and structural analysis detect deepfakes and altered images."
-            colorClass="bg-primary-container text-primary-container"
-            shadowClass="rgba(0,242,255,0.3)"
+            iconBgClass="bg-primary-container/20"
+            iconTextClass="text-primary-fixed-dim"
+            glowColor="rgba(0,242,255,0.3)"
           />
           <FeatureCard 
             icon="speed"
             title="Fast Results"
             description="Sub-second processing architecture delivers verdicts instantly via API or dashboard."
-            colorClass="bg-tertiary-container text-tertiary-fixed"
-            shadowClass="rgba(226,212,255,0.3)"
+            iconBgClass="bg-tertiary-container/20"
+            iconTextClass="text-tertiary"
+            glowColor="rgba(226,212,255,0.3)"
           />
           <FeatureCard 
             icon="verified_user"
             title="Trusted Sources"
             description="Cross-references claims against thousands of verified academic and news databases."
-            colorClass="bg-inverse-primary text-inverse-primary"
-            shadowClass="rgba(0,105,111,0.3)"
+            iconBgClass="bg-inverse-primary/20"
+            iconTextClass="text-primary-fixed-dim"
+            glowColor="rgba(0,105,111,0.3)"
           />
         </div>
       </section>

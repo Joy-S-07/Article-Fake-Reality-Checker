@@ -7,12 +7,10 @@ import VerificationResults from './pages/VerificationResults';
 import UserDashboard from './pages/UserDashboard';
 import AboutTruthLens from './pages/AboutTruthLens';
 import SignIn from './pages/SignIn';
-import CursorTracker from './components/CursorTracker';
 
 function App() {
   return (
     <Router>
-      <CursorTracker />
       <div className="bg-background text-on-background font-body-md min-h-screen flex flex-col relative overflow-x-hidden selection:bg-primary-container selection:text-on-primary-container transition-colors duration-300">
         <TopNavBar />
         <Routes>

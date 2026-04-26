@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 export default function Footer() {
   return (
     <footer className="w-full py-12 px-8 flex flex-col md:flex-row justify-center items-center bg-surface-container-lowest border-t border-white/5">
-      <div className="w-full max-w-max_width flex flex-col md:flex-row justify-between items-center gap-6">
+      <div className="w-full max-w-[1440px] flex flex-col md:flex-row justify-between items-center gap-6">
         <div className="text-lg font-bold text-on-surface">
           TruthLens
         </div>
