@@ -51,9 +51,8 @@ export default function CursorTracker() {
 
   return (
     <>
-      {/* Small instant dot */}
       <div 
-        className="fixed top-0 left-0 w-2 h-2 bg-cyan-400 rounded-full pointer-events-none z-[9999] mix-blend-screen shadow-[0_0_8px_rgba(0,242,255,0.8)]"
+        className="fixed top-0 left-0 w-2 h-2 bg-primary-fixed-dim rounded-full pointer-events-none z-[9999] mix-blend-screen shadow-[0_0_8px_rgba(0,219,231,0.8)]"
         style={{ 
           transform: `translate(${mousePosition.x - 4}px, ${mousePosition.y - 4}px)`,
           transition: 'width 0.2s, height 0.2s',
@@ -62,9 +61,8 @@ export default function CursorTracker() {
         }}
       />
       
-      {/* Smooth trailing ring */}
       <motion.div 
-        className="fixed top-0 left-0 border border-cyan-400/50 rounded-full pointer-events-none z-[9998] mix-blend-screen"
+        className="fixed top-0 left-0 border border-primary-fixed-dim/50 rounded-full pointer-events-none z-[9998] mix-blend-screen"
         style={{ 
           x: cursorX,
           y: cursorY,
@@ -72,8 +70,8 @@ export default function CursorTracker() {
           translateY: '-50%',
           width: isHovering ? '48px' : '32px',
           height: isHovering ? '48px' : '32px',
-          backgroundColor: isHovering ? 'rgba(0,242,255,0.1)' : 'transparent',
-          boxShadow: isHovering ? '0 0 20px rgba(0,242,255,0.2)' : 'none'
+          backgroundColor: isHovering ? 'rgba(0,219,231,0.1)' : 'transparent',
+          boxShadow: isHovering ? '0 0 20px rgba(0,219,231,0.2)' : 'none'
         }}
         animate={{
           width: isHovering ? 48 : 32,
