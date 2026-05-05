@@ -1,0 +1,39 @@
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { LandingPage } from './pages/LandingPage';
+import { LoginPage } from './pages/LoginPage';
+import { RegisterPage } from './pages/RegisterPage';
+import { HistoryPage } from './pages/HistoryPage';
+import { DashboardPage } from './pages/DashboardPage';
+import { VerifyPage } from './pages/VerifyPage';
+import { HowItWorksPage } from './pages/HowItWorksPage';
+import { SavedEvidencePage } from './pages/SavedEvidencePage';
+import { SettingsPage } from './pages/SettingsPage';
+import { Footer } from './components';
+import { ThemeProvider } from './context/ThemeContext';
+
+function App() {
+  return (
+    <ThemeProvider>
+      <Router>
+      <div className="flex flex-col min-h-screen">
+        <main className="flex-1 flex flex-col">
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/history" element={<HistoryPage />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/verify" element={<VerifyPage />} />
+            <Route path="/how-it-works" element={<HowItWorksPage />} />
+            <Route path="/saved-evidence" element={<SavedEvidencePage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+          </Routes>
+        </main>
+        <Footer />
+      </div>
+    </Router>
+    </ThemeProvider>
+  );
+}
+
+export default App;
