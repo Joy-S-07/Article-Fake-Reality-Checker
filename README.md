@@ -37,8 +37,8 @@ Verifi is engineered for scale and performance, divided into three core pillars:
 Verifi/
 ├── frontend/               # React SPA (Vite + TS)
 ├── backend/
-│   ├── api-gateway/        # Node.js Express Service (Auth & Data)
-│   └── ai-engine/          # Python FastAPI Service (ML & Research)
+│   ├── node-gateway/        # Node.js Express Service (Auth & Data)
+│   └── python-engine/          # Python FastAPI Service (ML & Research)
 └── README.md               # Project Master Documentation
 ```
 
