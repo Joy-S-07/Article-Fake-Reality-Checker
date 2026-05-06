@@ -1,14 +1,21 @@
 """
-Fraud Detection Service — Core Analysis Engine
+Article Verification Service — Gemini AI Engine
 
-This module contains the fraud detection logic. It uses a rule-based + heuristic
-scoring system as the default implementation. Replace the `analyze` method internals
-with a trained Scikit-Learn model, or an external AI API call (e.g., Gemini/OpenAI)
-for production use.
+Replaces the legacy rule-based fraud detector with Google Gemini 3.1 Flash
+for dynamic article/claim fact-checking. The article text is injected into
+the prompt via f-strings, and a generation_config with temperature ~0.3
+ensures slight variance while maintaining factual, structured output.
 """
 
+import json
 import re
-from typing import List, Tuple
+import traceback
+from typing import List
+
+from google import genai
+from google.genai import types
+
+from app.config import settings
 from app.schemas.detection import (
     FraudDetectionRequest,
     FraudDetectionResponse,
@@ -16,259 +23,178 @@ from app.schemas.detection import (
 )
 
 
-# ─── Known Risk Indicators ──────────────────────────
-HIGH_RISK_LOCATIONS = [
-    "lagos", "kiev", "pyongyang", "minsk", "caracas",
-    "offshore", "unknown", "vpn", "tor",
-]
+# ─── Gemini Prompt Template ────────────────────────
+# The {article_text} placeholder is filled dynamically for every request.
+VERIFICATION_PROMPT = """You are Verifi*, an advanced AI fact-checking analyst. Your task is to evaluate the following article or claim for factual accuracy, misleading framing, and misinformation.
 
-HIGH_RISK_CATEGORIES = [
-    "gambling", "cryptocurrency", "adult_entertainment",
-    "money_transfer", "prepaid_cards", "wire_services",
-]
+--- BEGIN CONTENT ---
+{article_text}
+--- END CONTENT ---
 
-SUSPICIOUS_KEYWORDS = [
-    "urgent", "wire transfer", "offshore", "untraceable",
-    "bitcoin", "anonymous", "western union", "moneygram",
-    "prepaid", "gift card", "no questions",
-]
+Analyze the above content carefully and return your assessment as a **valid JSON object** with exactly these keys (no markdown fences, no extra text):
+
+{{
+  "isFraud": <boolean — true if the content is misleading, fabricated, or contains significant misinformation; false if it appears factually accurate>,
+  "riskScore": <integer 0–100 — 0 means fully trustworthy, 100 means completely fabricated>,
+  "confidenceLevel": "<one of: Low, Medium, High, Critical>",
+  "flags": ["<list of specific misinformation indicators, unsupported claims, logical fallacies, or red flags found>"],
+  "analysisSummary": "<A detailed 3–5 sentence analysis explaining your verdict. Cite specific parts of the text that are problematic or credible. Mention whether claims are verifiable, sourced, or contradict known facts.>"
+}}
+
+Evaluation guidelines:
+- A risk score of 0–25 means the content is well-sourced and factually sound.
+- A risk score of 26–50 means minor inaccuracies or unverifiable claims exist.
+- A risk score of 51–75 means significant misleading content or unsupported claims.
+- A risk score of 76–100 means the content is largely fabricated or deliberately deceptive.
+- If the content is a URL verification request, note that you cannot browse the web but analyze the URL and any provided context.
+- Be objective and fair. Not all sensational claims are false.
+
+Return ONLY the JSON object. No explanations outside the JSON."""
 
 
 class FraudDetector:
     """
-    Rule-based fraud detection engine with heuristic scoring.
+    Gemini-powered article verification engine.
 
-    Production Note:
-    ─────────────────
-    Replace the body of `analyze()` with:
-      • A Scikit-Learn pipeline loaded via joblib
-      • A Pandas feature-engineering step
-      • Or an external AI API call (Gemini / OpenAI) for NLP-based anomaly detection
+    On init, configures the google-generativeai client with the API key
+    from .env (MODEL_API_KEY). Each call to `analyze()` dynamically injects
+    the article text into the prompt and queries Gemini with a low temperature
+    for factual consistency.
     """
 
     def __init__(self):
-        """Initialize detector. Load ML model here if using one."""
-        # Example: self.model = joblib.load("models/fraud_model.pkl")
-        self._amount_thresholds = {
-            "low": 500,
-            "medium": 5000,
-            "high": 15000,
-            "critical": 50000,
-        }
+        """Initialize the Gemini client with the API key from .env."""
+        api_key = settings.MODEL_API_KEY
+        if not api_key:
+            raise RuntimeError(
+                "MODEL_API_KEY is not set in .env — cannot initialize Gemini client."
+            )
+
+        # Create the google-genai client
+        self.client = genai.Client(api_key=api_key)
+        self.model_name = settings.GEMINI_MODEL_NAME
+
+        # Generation config for factual, structured output
+        self.generation_config = types.GenerateContentConfig(
+            temperature=settings.GEMINI_TEMPERATURE,  # ~0.3 for factual output
+            top_p=0.95,
+            max_output_tokens=2048,
+        )
+
+        print(f"[GEMINI] Initialized model: {settings.GEMINI_MODEL_NAME}")
+        print(f"[GEMINI] Temperature: {settings.GEMINI_TEMPERATURE}")
 
     async def analyze(self, payload: FraudDetectionRequest) -> FraudDetectionResponse:
         """
-        Analyze the incoming transaction data and return a risk assessment.
+        Analyze the incoming article/claim using Gemini AI.
 
-        Scoring breakdown:
-        ─ Amount analysis:       0-30 points
-        ─ Location analysis:     0-20 points
-        ─ Category analysis:     0-15 points
-        ─ Behavioral signals:    0-20 points
-        ─ Text/NLP analysis:     0-15 points
-        ─────────────────────────────────
-        Total possible:          100 points
+        The article text (from payload.description) is dynamically injected
+        into the prompt string via an f-string. Gemini returns structured JSON
+        which is parsed into the response schema.
         """
-        score = 0
-        flags: List[str] = []
+        article_text = payload.description or ""
 
-        # ─── 1. Transaction Amount Analysis ──────────
-        amount_score, amount_flags = self._analyze_amount(payload.transactionAmount)
-        score += amount_score
-        flags.extend(amount_flags)
+        # Guard: no content provided
+        if not article_text.strip():
+            return FraudDetectionResponse(
+                isFraud=False,
+                riskScore=0,
+                confidenceLevel=ConfidenceLevel.LOW,
+                flags=["No content was provided for analysis"],
+                analysisSummary="No article text or claim was submitted. Please provide content to verify.",
+            )
 
-        # ─── 2. Location Analysis ────────────────────
-        location_score, location_flags = self._analyze_location(payload.location)
-        score += location_score
-        flags.extend(location_flags)
+        # ─── Build the dynamic prompt ──────────────────
+        prompt = VERIFICATION_PROMPT.format(article_text=article_text)
 
-        # ─── 3. Merchant Category Analysis ───────────
-        category_score, category_flags = self._analyze_category(
-            payload.merchantCategory, payload.merchantName
-        )
-        score += category_score
-        flags.extend(category_flags)
+        try:
+            # ─── Call Gemini API ───────────────────────
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=self.generation_config,
+            )
 
-        # ─── 4. Behavioral Signals ───────────────────
-        behavior_score, behavior_flags = self._analyze_behavior(payload)
-        score += behavior_score
-        flags.extend(behavior_flags)
+            # Extract the text response
+            raw_text = response.text.strip()
 
-        # ─── 5. Text / NLP Analysis ──────────────────
-        text_score, text_flags = self._analyze_text(payload.description)
-        score += text_score
-        flags.extend(text_flags)
+            # ─── Parse the JSON response ──────────────
+            parsed = self._parse_gemini_response(raw_text)
 
-        # ─── Clamp score ─────────────────────────────
-        risk_score = min(max(score, 0), 100)
+            return FraudDetectionResponse(
+                isFraud=parsed.get("isFraud", False),
+                riskScore=max(0, min(100, int(parsed.get("riskScore", 50)))),
+                confidenceLevel=self._normalize_confidence(
+                    parsed.get("confidenceLevel", "Medium")
+                ),
+                flags=parsed.get("flags", []),
+                analysisSummary=parsed.get(
+                    "analysisSummary",
+                    "Analysis completed but summary was not generated.",
+                ),
+            )
 
-        # ─── Determine fraud status & confidence ────
-        is_fraud = risk_score >= 60
-        confidence = self._get_confidence_level(risk_score)
+        except Exception as e:
+            print(f"[GEMINI ERROR] {type(e).__name__}: {e}")
+            traceback.print_exc()
 
-        # ─── Generate summary ────────────────────────
-        summary = self._generate_summary(
-            is_fraud, risk_score, confidence, flags, payload
-        )
-
-        return FraudDetectionResponse(
-            isFraud=is_fraud,
-            riskScore=risk_score,
-            confidenceLevel=confidence,
-            flags=flags,
-            analysisSummary=summary,
-        )
-
-    # ─── Sub-Analyzers ──────────────────────────────
-
-    def _analyze_amount(self, amount: float) -> Tuple[int, List[str]]:
-        score = 0
-        flags = []
-
-        if amount > self._amount_thresholds["critical"]:
-            score += 30
-            flags.append(f"Extremely high transaction amount (${amount:,.2f})")
-        elif amount > self._amount_thresholds["high"]:
-            score += 22
-            flags.append(f"Very high transaction amount (${amount:,.2f})")
-        elif amount > self._amount_thresholds["medium"]:
-            score += 14
-            flags.append(f"High transaction amount (${amount:,.2f})")
-        elif amount > self._amount_thresholds["low"]:
-            score += 6
-
-        # Suspicious round numbers (often seen in fraud)
-        if amount > 1000 and amount == int(amount):
-            score += 5
-            flags.append("Suspiciously round transaction amount")
-
-        return score, flags
-
-    def _analyze_location(self, location: str | None) -> Tuple[int, List[str]]:
-        if not location:
-            return 5, ["No location data provided"]
-
-        score = 0
-        flags = []
-        loc_lower = location.lower()
-
-        for risk_loc in HIGH_RISK_LOCATIONS:
-            if risk_loc in loc_lower:
-                score += 20
-                flags.append(f"High-risk geographic location: {location}")
-                break
-
-        return score, flags
-
-    def _analyze_category(
-        self, category: str | None, merchant_name: str | None
-    ) -> Tuple[int, List[str]]:
-        score = 0
-        flags = []
-
-        if category:
-            cat_lower = category.lower()
-            for risk_cat in HIGH_RISK_CATEGORIES:
-                if risk_cat in cat_lower:
-                    score += 15
-                    flags.append(f"High-risk merchant category: {category}")
-                    break
-
-        if merchant_name:
-            name_lower = merchant_name.lower()
-            if any(kw in name_lower for kw in ["unknown", "anonymous", "temp", "test"]):
-                score += 10
-                flags.append(f"Suspicious merchant name: {merchant_name}")
-
-        return score, flags
-
-    def _analyze_behavior(self, payload: FraudDetectionRequest) -> Tuple[int, List[str]]:
-        score = 0
-        flags = []
-
-        # Missing device fingerprint
-        if not payload.deviceId:
-            score += 8
-            flags.append("No device fingerprint provided")
-
-        # IP analysis (basic heuristics)
-        if payload.ipAddress:
-            ip = payload.ipAddress
-            if ip.startswith(("10.", "192.168.", "172.")):
-                score += 5
-                flags.append("Transaction from private/internal IP range")
-            if ip == "0.0.0.0" or ip == "127.0.0.1":
-                score += 12
-                flags.append("Suspicious localhost/null IP address")
-
-        # Card type risk
-        if payload.cardType and payload.cardType.lower() in ["prepaid", "virtual", "gift"]:
-            score += 8
-            flags.append(f"High-risk card type: {payload.cardType}")
-
-        # Transaction type risk
-        if payload.transactionType and payload.transactionType.lower() in [
-            "wire_transfer", "crypto_purchase", "international_transfer"
-        ]:
-            score += 7
-            flags.append(f"High-risk transaction type: {payload.transactionType}")
-
-        return score, flags
-
-    def _analyze_text(self, description: str | None) -> Tuple[int, List[str]]:
-        if not description:
-            return 0, []
-
-        score = 0
-        flags = []
-        desc_lower = description.lower()
-
-        matches = [kw for kw in SUSPICIOUS_KEYWORDS if kw in desc_lower]
-        if matches:
-            score += min(len(matches) * 5, 15)
-            flags.append(f"Suspicious keywords detected: {', '.join(matches)}")
-
-        # Excessive urgency patterns
-        urgency_patterns = r"\b(asap|immediately|right now|hurry|rush)\b"
-        if re.search(urgency_patterns, desc_lower):
-            score += 5
-            flags.append("Urgency language detected in description")
-
-        return score, flags
+            # Return a graceful fallback rather than crashing
+            return FraudDetectionResponse(
+                isFraud=False,
+                riskScore=50,
+                confidenceLevel=ConfidenceLevel.MEDIUM,
+                flags=[f"AI engine error: {type(e).__name__}"],
+                analysisSummary=(
+                    f"The AI verification engine encountered an error while processing "
+                    f"your request: {str(e)}. The content could not be fully analyzed. "
+                    f"Please try again or check the server logs for details."
+                ),
+            )
 
     # ─── Helpers ─────────────────────────────────────
 
-    def _get_confidence_level(self, score: int) -> ConfidenceLevel:
-        if score >= 85:
-            return ConfidenceLevel.CRITICAL
-        elif score >= 60:
-            return ConfidenceLevel.HIGH
-        elif score >= 35:
-            return ConfidenceLevel.MEDIUM
-        else:
-            return ConfidenceLevel.LOW
+    def _parse_gemini_response(self, raw_text: str) -> dict:
+        """
+        Parse Gemini's response, handling possible markdown fences or
+        extraneous text around the JSON object.
+        """
+        # Strip markdown code fences if present
+        cleaned = raw_text
+        if cleaned.startswith("```"):
+            # Remove ```json ... ``` or ``` ... ```
+            cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
+            cleaned = re.sub(r"\s*```$", "", cleaned)
 
-    def _generate_summary(
-        self,
-        is_fraud: bool,
-        risk_score: int,
-        confidence: ConfidenceLevel,
-        flags: List[str],
-        payload: FraudDetectionRequest,
-    ) -> str:
-        if not is_fraud:
-            return (
-                f"The transaction of ${payload.transactionAmount:,.2f} has been analyzed "
-                f"and assigned a risk score of {risk_score}/100 ({confidence.value} confidence). "
-                f"No significant fraud indicators were detected. "
-                f"The transaction appears to be legitimate based on the available data."
-            )
+        # Try direct parse
+        try:
+            return json.loads(cleaned)
+        except json.JSONDecodeError:
+            pass
 
-        flag_summary = "; ".join(flags[:5]) if flags else "general anomaly patterns"
-        return (
-            f"⚠️ FRAUD ALERT: The transaction of ${payload.transactionAmount:,.2f} has been flagged "
-            f"with a risk score of {risk_score}/100 ({confidence.value} confidence). "
-            f"Key indicators: {flag_summary}. "
-            f"This transaction exhibits patterns strongly correlated with known fraudulent behavior "
-            f"and is recommended for manual review or automatic blocking."
-        )
+        # Fallback: find the first { ... } block
+        match = re.search(r"\{[\s\S]*\}", cleaned)
+        if match:
+            try:
+                return json.loads(match.group())
+            except json.JSONDecodeError:
+                pass
+
+        # Last resort: return a structured fallback
+        print(f"[GEMINI] Could not parse response as JSON. Raw: {raw_text[:500]}")
+        return {
+            "isFraud": False,
+            "riskScore": 50,
+            "confidenceLevel": "Medium",
+            "flags": ["Could not parse AI response"],
+            "analysisSummary": raw_text[:1000],
+        }
+
+    def _normalize_confidence(self, value: str) -> ConfidenceLevel:
+        """Map Gemini's confidence string to the enum, with fallback."""
+        mapping = {
+            "low": ConfidenceLevel.LOW,
+            "medium": ConfidenceLevel.MEDIUM,
+            "high": ConfidenceLevel.HIGH,
+            "critical": ConfidenceLevel.CRITICAL,
+        }
+        return mapping.get(value.lower().strip(), ConfidenceLevel.MEDIUM)

@@ -1,6 +1,6 @@
 """
 Pydantic schemas for request/response validation.
-Strict typing for the fraud detection API contract.
+Strict typing for the article verification API contract.
 """
 
 from pydantic import BaseModel, Field
@@ -17,32 +17,45 @@ class ConfidenceLevel(str, Enum):
 
 # ─── Request Schema ────────────────────────────────
 class FraudDetectionRequest(BaseModel):
-    """Schema for incoming fraud detection payloads from the Node gateway."""
+    """
+    Schema for incoming verification payloads from the Node gateway.
 
-    transactionAmount: float = Field(..., gt=0, description="Transaction amount in currency units")
-    transactionType: Optional[str] = Field(None, description="Type of transaction (e.g., purchase, transfer)")
-    merchantName: Optional[str] = Field(None, description="Name of the merchant")
-    merchantCategory: Optional[str] = Field(None, description="Merchant category code or name")
-    cardType: Optional[str] = Field(None, description="Card type (e.g., credit, debit, virtual)")
-    location: Optional[str] = Field(None, description="Transaction location")
-    ipAddress: Optional[str] = Field(None, description="IP address of the requester")
-    deviceId: Optional[str] = Field(None, description="Device fingerprint or identifier")
-    description: Optional[str] = Field(None, max_length=5000, description="Additional context or document text")
-    metadata: Optional[Dict[str, Any]] = Field(None, description="Arbitrary additional metadata")
+    The gateway sends article/claim text in the `description` field.
+    Other fields (transactionAmount, transactionType, etc.) are kept
+    for backward-compatibility with the existing frontend contract
+    but are NOT used by the Gemini analysis engine.
+    """
+
+    transactionAmount: float = Field(
+        default=1.0, gt=0,
+        description="Legacy field — kept for contract compatibility"
+    )
+    transactionType: Optional[str] = Field(
+        None,
+        description="Verification type: text_verification | url_verification"
+    )
+    merchantName: Optional[str] = Field(
+        None,
+        description="Hostname when verifying URLs"
+    )
+    merchantCategory: Optional[str] = Field(None)
+    cardType: Optional[str] = Field(None)
+    location: Optional[str] = Field(None)
+    ipAddress: Optional[str] = Field(None)
+    deviceId: Optional[str] = Field(None)
+    description: Optional[str] = Field(
+        None, max_length=50000,
+        description="The article text or claim to verify (primary input)"
+    )
+    metadata: Optional[Dict[str, Any]] = Field(None)
 
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
-                    "transactionAmount": 15000.00,
-                    "transactionType": "wire_transfer",
-                    "merchantName": "Unknown Offshore LLC",
-                    "merchantCategory": "financial_services",
-                    "cardType": "credit",
-                    "location": "Lagos, Nigeria",
-                    "ipAddress": "192.168.1.100",
-                    "deviceId": "device_abc123",
-                    "description": "Large international wire transfer to unverified account",
+                    "transactionAmount": 1,
+                    "transactionType": "text_verification",
+                    "description": "Scientists have confirmed that the Earth is flat according to a new NASA study published today.",
                 }
             ]
         }
@@ -53,11 +66,24 @@ class FraudDetectionRequest(BaseModel):
 class FraudDetectionResponse(BaseModel):
     """Strict response schema returned to the Node gateway."""
 
-    isFraud: bool = Field(..., description="Whether the transaction is flagged as fraudulent")
-    riskScore: int = Field(..., ge=0, le=100, description="Risk score from 0 (safe) to 100 (critical)")
-    confidenceLevel: ConfidenceLevel = Field(..., description="Confidence level of the analysis")
-    flags: List[str] = Field(default_factory=list, description="List of specific fraud indicators found")
-    analysisSummary: str = Field(..., description="Human-readable summary of the analysis")
+    isFraud: bool = Field(
+        ...,
+        description="Whether the content is flagged as misleading/false"
+    )
+    riskScore: int = Field(
+        ..., ge=0, le=100,
+        description="Risk score from 0 (trustworthy) to 100 (fabricated)"
+    )
+    confidenceLevel: ConfidenceLevel = Field(
+        ..., description="Confidence level of the analysis"
+    )
+    flags: List[str] = Field(
+        default_factory=list,
+        description="List of specific misinformation indicators found"
+    )
+    analysisSummary: str = Field(
+        ..., description="Human-readable summary of the analysis"
+    )
 
     model_config = {
         "json_schema_extra": {
@@ -66,8 +92,11 @@ class FraudDetectionResponse(BaseModel):
                     "isFraud": True,
                     "riskScore": 92,
                     "confidenceLevel": "High",
-                    "flags": ["Suspicious IP location", "Unusual transaction volume"],
-                    "analysisSummary": "The transaction exhibits patterns strongly correlated with known fraudulent behavior...",
+                    "flags": [
+                        "No credible source cited",
+                        "Contradicts established scientific consensus",
+                    ],
+                    "analysisSummary": "The claim that NASA confirmed the Earth is flat is fabricated...",
                 }
             ]
         }

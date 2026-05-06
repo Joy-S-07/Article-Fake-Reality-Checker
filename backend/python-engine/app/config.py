@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     MODEL_PATH: Optional[str] = None
     ALLOWED_ORIGINS: str = "http://localhost:5000"
 
+    # Gemini model configuration
+    GEMINI_MODEL_NAME: str = "gemini-2.5-flash"
+    GEMINI_TEMPERATURE: float = 0.3
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
