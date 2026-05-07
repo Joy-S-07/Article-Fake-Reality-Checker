@@ -113,7 +113,7 @@ Verifi is built with 🧠 and ❤️ by:
 - **Joy** - [Profile](https://github.com/Joy-S-07)
 - **Shubhadip** - [Profile](https://github.com/Shubhadip-Codes)
 - **Aranya** - [Profile](https://github.com/AKr3106)
-- **Sayantika** - [Profile]()
+- **Sayantika** - [Profile](https://github.com/SayantikaBera-05)
 
 ---
 
