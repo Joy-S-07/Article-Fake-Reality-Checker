@@ -1,10 +1,9 @@
 """
-Article Verification Service — Gemini AI Engine
+Article Verification Service — Groq AI Engine
 
-Replaces the legacy rule-based fraud detector with Google Gemini 3.1 Flash
-for dynamic article/claim fact-checking. The article text is injected into
-the prompt via f-strings, and a generation_config with temperature ~0.3
-ensures slight variance while maintaining factual, structured output.
+Replaces the legacy Gemini-based detector with the Groq API via the
+standard OpenAI SDK. The article text is injected into the prompt via
+f-strings, and temperature ~0.3 ensures factual, structured output.
 """
 
 import json
@@ -12,8 +11,7 @@ import re
 import traceback
 from typing import List
 
-from google import genai
-from google.genai import types
+from openai import OpenAI
 
 from app.config import settings
 from app.schemas.detection import (
@@ -23,7 +21,7 @@ from app.schemas.detection import (
 )
 
 
-# ─── Gemini Prompt Template ────────────────────────
+# ─── Verification Prompt Template ─────────────────
 # The {article_text} placeholder is filled dynamically for every request.
 VERIFICATION_PROMPT = """You are Verifi*, an advanced AI fact-checking analyst. Your task is to evaluate the following article or claim for factual accuracy, misleading framing, and misinformation.
 
@@ -54,42 +52,39 @@ Return ONLY the JSON object. No explanations outside the JSON."""
 
 class FraudDetector:
     """
-    Gemini-powered article verification engine.
+    Groq-powered article verification engine.
 
-    On init, configures the google-generativeai client with the API key
-    from .env (MODEL_API_KEY). Each call to `analyze()` dynamically injects
-    the article text into the prompt and queries Gemini with a low temperature
-    for factual consistency.
+    On init, configures the OpenAI-compatible client pointed at Groq's
+    endpoint using the GROQ_API_KEY from .env. Each call to `analyze()`
+    dynamically injects the article text into the prompt and queries
+    Groq with a low temperature for factual consistency.
     """
 
     def __init__(self):
-        """Initialize the Gemini client with the API key from .env."""
-        api_key = settings.MODEL_API_KEY
+        """Initialize the Groq client via the OpenAI SDK."""
+        api_key = settings.GROQ_API_KEY
         if not api_key:
             raise RuntimeError(
-                "MODEL_API_KEY is not set in .env — cannot initialize Gemini client."
+                "GROQ_API_KEY is not set in .env — cannot initialize Groq client."
             )
 
-        # Create the google-genai client
-        self.client = genai.Client(api_key=api_key)
-        self.model_name = settings.GEMINI_MODEL_NAME
-
-        # Generation config for factual, structured output
-        self.generation_config = types.GenerateContentConfig(
-            temperature=settings.GEMINI_TEMPERATURE,  # ~0.3 for factual output
-            top_p=0.95,
-            max_output_tokens=2048,
+        # Create the OpenAI-compatible client pointed at Groq
+        self.client = OpenAI(
+            api_key=api_key,
+            base_url="https://api.groq.com/openai/v1",
         )
+        self.model_name = settings.GROQ_MODEL_NAME
+        self.temperature = settings.GROQ_TEMPERATURE
 
-        print(f"[GEMINI] Initialized model: {settings.GEMINI_MODEL_NAME}")
-        print(f"[GEMINI] Temperature: {settings.GEMINI_TEMPERATURE}")
+        print(f"[GROQ] Initialized model: {self.model_name}")
+        print(f"[GROQ] Temperature: {self.temperature}")
 
     async def analyze(self, payload: FraudDetectionRequest) -> FraudDetectionResponse:
         """
-        Analyze the incoming article/claim using Gemini AI.
+        Analyze the incoming article/claim using Groq AI.
 
         The article text (from payload.description) is dynamically injected
-        into the prompt string via an f-string. Gemini returns structured JSON
+        into the prompt string via an f-string. Groq returns structured JSON
         which is parsed into the response schema.
         """
         article_text = payload.description or ""
@@ -108,18 +103,29 @@ class FraudDetector:
         prompt = VERIFICATION_PROMPT.format(article_text=article_text)
 
         try:
-            # ─── Call Gemini API ───────────────────────
-            response = self.client.models.generate_content(
+            # ─── Call Groq API via OpenAI SDK ─────────
+            response = self.client.chat.completions.create(
                 model=self.model_name,
-                contents=prompt,
-                config=self.generation_config,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a fact-checking AI. Respond only with valid JSON.",
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt,
+                    },
+                ],
+                temperature=self.temperature,
+                max_tokens=2048,
+                top_p=0.95,
             )
 
             # Extract the text response
-            raw_text = response.text.strip()
+            raw_text = response.choices[0].message.content.strip()
 
             # ─── Parse the JSON response ──────────────
-            parsed = self._parse_gemini_response(raw_text)
+            parsed = self._parse_response(raw_text)
 
             return FraudDetectionResponse(
                 isFraud=parsed.get("isFraud", False),
@@ -135,7 +141,7 @@ class FraudDetector:
             )
 
         except Exception as e:
-            print(f"[GEMINI ERROR] {type(e).__name__}: {e}")
+            print(f"[GROQ ERROR] {type(e).__name__}: {e}")
             traceback.print_exc()
 
             # Return a graceful fallback rather than crashing
@@ -153,9 +159,9 @@ class FraudDetector:
 
     # ─── Helpers ─────────────────────────────────────
 
-    def _parse_gemini_response(self, raw_text: str) -> dict:
+    def _parse_response(self, raw_text: str) -> dict:
         """
-        Parse Gemini's response, handling possible markdown fences or
+        Parse the LLM response, handling possible markdown fences or
         extraneous text around the JSON object.
         """
         # Strip markdown code fences if present
@@ -180,7 +186,7 @@ class FraudDetector:
                 pass
 
         # Last resort: return a structured fallback
-        print(f"[GEMINI] Could not parse response as JSON. Raw: {raw_text[:500]}")
+        print(f"[GROQ] Could not parse response as JSON. Raw: {raw_text[:500]}")
         return {
             "isFraud": False,
             "riskScore": 50,
@@ -190,7 +196,7 @@ class FraudDetector:
         }
 
     def _normalize_confidence(self, value: str) -> ConfidenceLevel:
-        """Map Gemini's confidence string to the enum, with fallback."""
+        """Map the model's confidence string to the enum, with fallback."""
         mapping = {
             "low": ConfidenceLevel.LOW,
             "medium": ConfidenceLevel.MEDIUM,

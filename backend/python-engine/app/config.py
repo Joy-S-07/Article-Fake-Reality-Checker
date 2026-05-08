@@ -9,13 +9,13 @@ from typing import Optional
 
 class Settings(BaseSettings):
     PORT: int = 8000
-    MODEL_API_KEY: Optional[str] = None
+    GROQ_API_KEY: Optional[str] = None
     MODEL_PATH: Optional[str] = None
     ALLOWED_ORIGINS: str = "http://localhost:5000"
 
-    # Gemini model configuration
-    GEMINI_MODEL_NAME: str = "gemini-2.5-flash"
-    GEMINI_TEMPERATURE: float = 0.3
+    # Groq model configuration
+    GROQ_MODEL_NAME: str = "llama-3.3-70b-versatile"
+    GROQ_TEMPERATURE: float = 0.3
 
     class Config:
         env_file = ".env"
