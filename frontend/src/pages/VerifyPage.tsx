@@ -141,7 +141,7 @@ export function VerifyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-gray-100 flex flex-col p-6 relative overflow-hidden font-sans transition-colors">
+    <div className="min-h-screen bg-slate-50 dark:bg-gray-100 flex flex-col p-4 sm:p-6 relative overflow-hidden font-sans transition-colors">
       {/* Background styling */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[150px]"></div>
@@ -149,13 +149,13 @@ export function VerifyPage() {
         <div className="absolute inset-0 bg-grid-pattern opacity-50 mix-blend-overlay"></div>
       </div>
 
-      <header className="relative z-20 max-w-7xl mx-auto w-full mb-12">
+      <header className="relative z-20 max-w-7xl mx-auto w-full mb-8 sm:mb-12">
         <Link to="/" className="text-gray-500 dark:text-gray-600 hover:text-slate-900 dark:hover:text-gray-900 transition flex items-center gap-2 mb-8 w-fit font-medium">
           <ArrowLeft size={18} />
           Back to Home
         </Link>
-        <h1 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-gray-900 mb-4">Verification Center</h1>
-        <p className="text-slate-600 dark:text-gray-600 text-lg max-w-2xl">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 dark:text-gray-900 mb-3 sm:mb-4">Verification Center</h1>
+        <p className="text-slate-600 dark:text-gray-600 text-sm sm:text-lg max-w-2xl">
           Select a verification method below. Our agentic engine powered by Groq Llama 3 will analyze the content and detect any fabrications or misleading claims.
         </p>
         {isGuest && (
@@ -175,14 +175,14 @@ export function VerifyPage() {
       </header>
 
       <main className="relative z-20 max-w-7xl mx-auto w-full flex-1 flex flex-col">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
           
           {/* Panel 1: Text Verifier */}
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className={`bg-white dark:bg-surface/80 backdrop-blur-xl border rounded-3xl p-8 flex flex-col shadow-xl transition-colors group ${
+            className={`bg-white dark:bg-surface/80 backdrop-blur-xl border rounded-2xl sm:rounded-3xl p-6 sm:p-8 flex flex-col shadow-xl transition-colors group ${
               activeTab === 'text'
                 ? 'border-primary/50 dark:border-primary/30 ring-1 ring-primary/20'
                 : 'border-slate-200 dark:border-gray-300/50 hover:border-slate-300 dark:hover:border-slate-600'
@@ -191,7 +191,7 @@ export function VerifyPage() {
             <div className="w-14 h-14 bg-blue-100 dark:bg-orange-900/40 rounded-2xl flex items-center justify-center mb-6 border border-blue-200 dark:border-blue-800/50 group-hover:bg-primary/20 transition-colors">
               <FileText size={28} className="text-orange-600 dark:text-orange-400 group-hover:text-primary transition-colors" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-gray-900 mb-3">Text Verifier</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-gray-900 mb-3">Text Verifier</h2>
             <p className="text-slate-600 dark:text-gray-600 text-sm mb-8 flex-1">
               Analyze claims, news snippets, or social media statements for factual accuracy.
             </p>
@@ -238,7 +238,7 @@ export function VerifyPage() {
             <div className="w-14 h-14 bg-purple-100 dark:bg-purple-900/40 rounded-2xl flex items-center justify-center mb-6 border border-purple-200 dark:border-purple-800/50 group-hover:bg-primary/20 transition-colors">
               <LinkIcon size={28} className="text-amber-600 group-hover:text-primary transition-colors" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-gray-900 mb-3">URL Verifier</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-gray-900 mb-3">URL Verifier</h2>
             <p className="text-slate-600 dark:text-gray-600 text-sm mb-8 flex-1">
               Verify the content of entire webpages and articles by pasting the link.
             </p>
@@ -294,7 +294,7 @@ export function VerifyPage() {
             <div className="w-14 h-14 bg-green-100 dark:bg-green-900/40 rounded-2xl flex items-center justify-center mb-6 border border-green-200 dark:border-green-800/50 group-hover:bg-primary/20 transition-colors">
               <ImageIcon size={28} className="text-green-600 dark:text-green-400 group-hover:text-primary transition-colors" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-gray-900 mb-3">Image Verifier</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-gray-900 mb-3">Image Verifier</h2>
             <p className="text-slate-600 dark:text-gray-600 text-sm mb-8 flex-1">
               Detect manipulated visuals, AI generation, and synthetic fabrications.
             </p>
@@ -366,10 +366,10 @@ export function VerifyPage() {
               transition={{ duration: 0.5 }}
               className="mt-10"
             >
-              <div className="bg-white dark:bg-white rounded-[2rem] p-8 lg:p-10 border border-slate-200 dark:border-gray-200/50 shadow-2xl transition-colors">
+              <div className="bg-white dark:bg-white rounded-2xl sm:rounded-[2rem] p-5 sm:p-8 lg:p-10 border border-slate-200 dark:border-gray-200/50 shadow-2xl transition-colors">
                 
                 {/* Header */}
-                <div className="flex items-center justify-between mb-8">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-3">
                   <h2 className="text-2xl font-bold text-slate-900 dark:text-gray-900 flex items-center gap-3">
                     {result.isFraud ? (
                       <ShieldAlert size={28} className="text-red-500" />
@@ -386,7 +386,7 @@ export function VerifyPage() {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
                   
                   {/* Risk Score */}
                   <div className="bg-slate-50 dark:bg-gray-100/30 rounded-2xl p-6 border border-slate-200 dark:border-gray-200 flex flex-col items-center justify-center text-center">

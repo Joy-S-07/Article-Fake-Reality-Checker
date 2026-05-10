@@ -50,6 +50,9 @@ app.use(sanitizeInput);
 app.use(passport.initialize());
 
 // ─── Health Check ──────────────────────────────────
+app.get("/", (_req, res) => {
+  res.json({ status: "ok", service: "node-gateway", timestamp: new Date().toISOString() });
+});
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", service: "node-gateway", timestamp: new Date().toISOString() });
 });
