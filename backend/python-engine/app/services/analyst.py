@@ -1,12 +1,12 @@
 """
-Analyst Service — Groq Auditor Agent
+Analyst Service — OpenRouter Auditor Agent
 
 The core LLM analysis engine that adopts a skeptical, clinical
 fraud investigator persona ("AUDITOR-7"). Ingests both the user's
 claim AND real-time evidence retrieved by Scout + Reader, then
 cross-references them to produce a grounded verdict.
 
-Uses Groq API via the OpenAI SDK with streaming for real-time
+Uses OpenRouter API via the OpenAI SDK with streaming for real-time
 console visibility during development.
 
 Author: Joy-S-07
@@ -118,14 +118,14 @@ Return ONLY the JSON object."""
 
 class Analyst:
     """
-    Groq-powered Auditor agent — performs deep fraud analysis.
+    OpenRouter-powered Auditor agent — performs deep fraud analysis.
 
     When evidence is available (from Scout + Reader), the Analyst
     cross-references the claim against real-world sources. When
     evidence is unavailable, it falls back to internal-knowledge
     analysis with an explicit confidence caveat.
 
-    Uses Groq's streaming API for real-time console output during
+    Uses OpenRouter's streaming API for real-time console output during
     development, then assembles the full response for the API.
 
     Usage:
@@ -138,19 +138,27 @@ class Analyst:
     """
 
     def __init__(self):
-        """Initialize the Groq client via the AsyncOpenAI SDK."""
-        api_key = settings.GROQ_API_KEY
+        """Initialize the OpenRouter client via the AsyncOpenAI SDK."""
+        api_key = settings.OPENROUTER_API_KEY
         if not api_key:
             raise RuntimeError(
-                "GROQ_API_KEY is not set in .env — cannot initialize Analyst."
+                "OPENROUTER_API_KEY is not set in .env — cannot initialize Analyst."
             )
+
+        # Build OpenRouter-specific headers
+        extra_headers = {}
+        if settings.OPENROUTER_SITE_URL:
+            extra_headers["HTTP-Referer"] = settings.OPENROUTER_SITE_URL
+        if settings.OPENROUTER_SITE_NAME:
+            extra_headers["X-OpenRouter-Title"] = settings.OPENROUTER_SITE_NAME
 
         self.client = AsyncOpenAI(
             api_key=api_key,
-            base_url="https://api.groq.com/openai/v1",
+            base_url=settings.OPENROUTER_BASE_URL,
+            default_headers=extra_headers if extra_headers else None,
         )
-        self.model_name = settings.GROQ_MODEL_NAME
-        self.temperature = settings.GROQ_TEMPERATURE
+        self.model_name = settings.OPENROUTER_MODEL_NAME
+        self.temperature = settings.OPENROUTER_TEMPERATURE
 
         print(f"[ANALYST] AUDITOR-7 initialized (async) — model: {self.model_name}")
 
@@ -183,7 +191,7 @@ class Analyst:
             prompt = FALLBACK_PROMPT.format(claim=claim)
 
         try:
-            # ─── Stream from Groq ──────────────────────
+            # ─── Stream from OpenRouter ────────────────
             raw_text = await self._stream_completion(prompt)
 
             # ─── Parse the JSON response ───────────────
@@ -267,14 +275,14 @@ class Analyst:
             search_context=search_context,
         )
 
-    # ─── Groq Streaming ─────────────────────────────
+    # ─── OpenRouter Streaming ──────────────────────────
 
     async def _stream_completion(self, prompt: str) -> str:
         """
-        Call Groq with streaming enabled and assemble the full response.
+        Call OpenRouter with streaming enabled and assemble the full response.
 
         Uses AsyncOpenAI so that the asyncio event loop is NOT blocked
-        while waiting for Groq chunks. This is critical — the previous
+        while waiting for OpenRouter chunks. This is critical — the previous
         synchronous client caused uvicorn to hang, timing out the Node
         gateway and triggering a 502 on the frontend.
 
