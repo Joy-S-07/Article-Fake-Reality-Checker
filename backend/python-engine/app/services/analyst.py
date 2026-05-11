@@ -218,16 +218,92 @@ class Analyst:
             print(f"[ANALYST] WARNING: Error: {type(e).__name__}: {e}")
             traceback.print_exc()
 
+            # ─── Build structured error response ──────────
+            error_type = type(e).__name__
+            error_msg = str(e)
+            error_flags = [f"AI engine error: {error_type}"]
+            error_summary = ""
+
+            # Detect OpenAI/OpenRouter API errors with status codes
+            status_code = getattr(e, "status_code", None)
+
+            if status_code == 402:
+                error_flags = [
+                    "Error 402: Insufficient Credits",
+                    f"Model requested: {self.model_name}",
+                    "Action: Add credits at https://openrouter.ai/settings/credits or switch to a free model",
+                ]
+                error_summary = (
+                    f"⚠️ PAYMENT REQUIRED — Your OpenRouter account does not have "
+                    f"enough credits to run model '{self.model_name}'. "
+                    f"Either add credits at https://openrouter.ai/settings/credits, "
+                    f"reduce max_tokens, or switch to a free model like 'openrouter/auto'."
+                )
+
+            elif status_code == 404:
+                error_flags = [
+                    "Error 404: Model Not Found",
+                    f"Model requested: {self.model_name}",
+                    "Action: Check available models at https://openrouter.ai/models",
+                ]
+                error_summary = (
+                    f"⚠️ MODEL NOT FOUND — The model '{self.model_name}' does not exist "
+                    f"or has been deprecated on OpenRouter. Browse available models at "
+                    f"https://openrouter.ai/models and update the OPENROUTER_MODEL_NAME "
+                    f"environment variable."
+                )
+
+            elif status_code == 429:
+                error_flags = [
+                    "Error 429: Rate Limited",
+                    f"Model: {self.model_name}",
+                    "Action: Wait a moment and try again, or upgrade your plan",
+                ]
+                error_summary = (
+                    f"⚠️ RATE LIMITED — Too many requests to OpenRouter. "
+                    f"Free-tier accounts are limited to ~20 requests/minute. "
+                    f"Please wait a moment and try again."
+                )
+
+            elif status_code == 401:
+                error_flags = [
+                    "Error 401: Authentication Failed",
+                    "Action: Check your OPENROUTER_API_KEY in .env",
+                ]
+                error_summary = (
+                    f"⚠️ AUTHENTICATION FAILED — Your OpenRouter API key is invalid "
+                    f"or expired. Verify the OPENROUTER_API_KEY in your environment variables."
+                )
+
+            elif status_code and status_code >= 500:
+                error_flags = [
+                    f"Error {status_code}: OpenRouter Server Error",
+                    f"Model: {self.model_name}",
+                    "Action: This is a temporary issue on OpenRouter's side. Try again shortly.",
+                ]
+                error_summary = (
+                    f"⚠️ SERVER ERROR — OpenRouter returned a {status_code} error. "
+                    f"This is typically a temporary issue. Please try again in a few moments."
+                )
+
+            else:
+                # Generic/unknown error
+                error_flags = [
+                    f"Error: {error_type}",
+                    f"Model: {self.model_name}",
+                    f"Details: {error_msg[:200]}",
+                ]
+                error_summary = (
+                    f"⚠️ UNEXPECTED ERROR — {error_type}: {error_msg[:300]}. "
+                    f"Please check the server logs for full details."
+                )
+
             return FraudDetectionResponse(
                 isFraud=False,
                 riskScore=50,
                 confidenceLevel=ConfidenceLevel.MEDIUM,
-                flags=[f"AI engine error: {type(e).__name__}"],
-                analysisSummary=(
-                    f"The AUDITOR-7 engine encountered an error while processing "
-                    f"your request: {str(e)}. The content could not be fully analyzed. "
-                    f"Please try again or check the server logs for details."
-                ),
+                flags=error_flags,
+                analysisSummary=error_summary,
                 sources=[],
             )
 
