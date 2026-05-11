@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useRef, useEffect, type FormEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileText,
@@ -34,6 +34,9 @@ export function VerifyPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<FraudResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // ─── Auto-scroll ref ────────────────────────────
+  const resultRef = useRef<HTMLDivElement>(null);
 
   // Guest mode — no redirect, just show a banner below
 
@@ -113,6 +116,16 @@ export function VerifyPage() {
       setIsAnalyzing(false);
     }
   };
+
+  // ─── Auto-scroll when result or loading appears ──
+  useEffect(() => {
+    if (result || isAnalyzing) {
+      // Small delay to let the DOM render/animate
+      setTimeout(() => {
+        resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 150);
+    }
+  }, [result, isAnalyzing]);
 
   // ─── Get confidence color ────────────────────────
   const getConfidenceColor = (level: string) => {
@@ -350,6 +363,7 @@ export function VerifyPage() {
               exit={{ opacity: 0, y: 30 }}
               transition={{ duration: 0.5 }}
               className="mt-10"
+              ref={resultRef}
             >
               <FraudDetectionLoading />
             </motion.div>
