@@ -13,7 +13,6 @@
   <a href="https://www.python.org/" target="_blank"><img src="./assets/logos/python.svg" alt="Python" width="40" height="40" /></a> &nbsp;
   <a href="https://www.mongodb.com/" target="_blank"><img src="./assets/logos/mongodb.svg" alt="MongoDB" width="40" height="40" /></a> &nbsp;
   <a href="https://tailwindcss.com/" target="_blank"><img src="./assets/logos/tailwindcss.svg" alt="Tailwind CSS" width="40" height="40" /></a> &nbsp;
-  <a href="https://openrouter.ai/" target="_blank"><img src="./assets/logos/openrouter.svg" alt="OpenRouter" width="40" height="40" /></a>
 </p>
 
 **Verifi*** is a sophisticated, full-stack platform designed to combat the global epidemic of misinformation. Built on a modern microservices architecture, Verifi processes multimodal inputs—text, URLs, and images—using an **Agentic AI Pipeline** powered by **OpenRouter (Llama 3)**, **Serper.dev**, and **Jina AI** to extract underlying claims, crawl the live web for evidence, and evaluate veracity.
