@@ -1,17 +1,19 @@
 # Verifi* — Multimodal AI Fact-Checking Platform
 > **Where you verify realities.**
 
-<img width="1904" height="975" alt="image" src="https://github.com/user-attachments/assets/905efc38-c9ee-40d7-885b-8c2ef162bafc" />
+🎥 **[Watch Live Demo Video](https://drive.google.com/file/d/16nz3pzpogpMFHW1nkNN_XPQNLfgfAbxa/view?usp=drive_link)**
+
+<img width="1904" height="980" alt="Recording 2026-05-12 195525" src="https://github.com/user-attachments/assets/f38752f9-1b7c-409d-8969-6dfc4e7947f5" />
 
 <br>
 
 <p align="center">
-  <img src="./assets/logos/react.svg" alt="React" width="40" height="40" /> &nbsp;
-  <img src="./assets/logos/nodejs.svg" alt="Node.js" width="40" height="40" /> &nbsp;
-  <img src="./assets/logos/python.svg" alt="Python" width="40" height="40" /> &nbsp;
-  <img src="./assets/logos/mongodb.svg" alt="MongoDB" width="40" height="40" /> &nbsp;
-  <img src="./assets/logos/tailwindcss.svg" alt="Tailwind CSS" width="40" height="40" /> &nbsp;
-  <img src="./assets/logos/openrouter.svg" alt="OpenRouter" width="40" height="40" />
+  <a href="https://react.dev/" target="_blank"><img src="./assets/logos/react.svg" alt="React" width="40" height="40" /></a> &nbsp;
+  <a href="https://nodejs.org/" target="_blank"><img src="./assets/logos/nodejs.svg" alt="Node.js" width="40" height="40" /></a> &nbsp;
+  <a href="https://www.python.org/" target="_blank"><img src="./assets/logos/python.svg" alt="Python" width="40" height="40" /></a> &nbsp;
+  <a href="https://www.mongodb.com/" target="_blank"><img src="./assets/logos/mongodb.svg" alt="MongoDB" width="40" height="40" /></a> &nbsp;
+  <a href="https://tailwindcss.com/" target="_blank"><img src="./assets/logos/tailwindcss.svg" alt="Tailwind CSS" width="40" height="40" /></a> &nbsp;
+  <a href="https://openrouter.ai/" target="_blank"><img src="./assets/logos/openrouter.svg" alt="OpenRouter" width="40" height="40" /></a>
 </p>
 
 **Verifi*** is a sophisticated, full-stack platform designed to combat the global epidemic of misinformation. Built on a modern microservices architecture, Verifi processes multimodal inputs—text, URLs, and images—using an **Agentic AI Pipeline** powered by **OpenRouter (Llama 3)**, **Serper.dev**, and **Jina AI** to extract underlying claims, crawl the live web for evidence, and evaluate veracity.
