@@ -14,17 +14,21 @@ Event Types:
     event: completed  → Full fraud detection result (JSON)
     event: error      → Pipeline error message
 
+NOTE: pipeline_stream() IS the orchestrator for SSE requests.
+      FraudDetector.analyze() is only used by the non-SSE /detect route.
+      All stage banner prints must live here, not in detector.py.
+
 Author: Joy-S-07
 """
 
 import json
+import sys
 import traceback
 from typing import AsyncGenerator
 
 from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 
-from app.config import settings
 from app.schemas.detection import (
     FraudDetectionRequest,
     FraudDetectionResponse,
@@ -68,6 +72,17 @@ def sse_error(message: str) -> str:
     })
 
 
+def plog(msg: str) -> None:
+    """
+    Pipeline logger — writes to stderr with immediate flush.
+
+    stderr is unbuffered by the OS by default, so this is guaranteed
+    to appear in the terminal regardless of PYTHONUNBUFFERED or Uvicorn
+    buffering. Use this for all pipeline stage banners.
+    """
+    print(msg, file=sys.stderr, flush=True)
+
+
 # ─── SSE Pipeline Generator ────────────────────────
 
 async def pipeline_stream(
@@ -78,9 +93,10 @@ async def pipeline_stream(
     rag_enabled: bool,
 ) -> AsyncGenerator[str, None]:
     """
-    Async generator that runs the fraud detection pipeline and yields
-    SSE events at each stage transition. This is the core streaming
-    engine — each yield happens in real-time as the pipeline progresses.
+    Async generator — runs the full pipeline and yields SSE events.
+
+    This IS the orchestrator for SSE requests. FraudDetector.analyze()
+    is bypassed here; all stage prints must live in this function.
     """
     claim = payload.description or ""
 
@@ -100,42 +116,33 @@ async def pipeline_stream(
         return
 
     try:
-        # --- Stage 1: SCOUT -- Search for evidence (News-first) ---
-        yield sse_stage("SCOUT", 1, "Searching for evidence...")
         serper_query = f"fact check {claim.strip()[:300]}"
-        print(f"\n{'=' * 60}")
-        print(f"[SSE PIPELINE] Stage 1/4 -- SCOUT: Searching for evidence...")
-        print(f"{'=' * 60}")
+
+        # ── Stage 1: SCOUT ────────────────────────────────────────
+        yield sse_stage("SCOUT", 1, "Searching for evidence...")
+
+        plog("")
+        plog("=" * 60)
+        plog("[PIPELINE] Stage 1/4 — SCOUT: Searching for evidence...")
+        plog("=" * 60)
 
         search_results = []
-
-        # Step 1a: Try NewsAPI first (news-first verification)
-        if rag_enabled and detector_scout.is_news_available:
+        if rag_enabled and detector_scout.is_available:
             try:
-                print(f"[SSE PIPELINE] Stage 1a -- NEWS SEARCH (NewsAPI.org)...")
-                search_results = await detector_scout.search_news(claim)
-                if search_results:
-                    print(f"[SSE PIPELINE] ✓ Found {len(search_results)} news articles")
-                else:
-                    print(f"[SSE PIPELINE] ✗ No news articles — falling back to web search")
-            except Exception as e:
-                print(f"[SSE PIPELINE] WARNING: NewsAPI failed: {type(e).__name__}: {e}")
-                traceback.print_exc()
-
-        # Step 1b: Fall back to Serper web search
-        if not search_results and rag_enabled and detector_scout.is_available:
-            try:
-                print(f"[SSE PIPELINE] Stage 1b -- WEB SEARCH (Serper.dev)...")
                 search_results = await detector_scout.search(claim)
             except Exception as e:
-                print(f"[SSE PIPELINE] WARNING: Scout failed: {type(e).__name__}: {e}")
+                plog(f"[PIPELINE] WARNING: Scout failed: {type(e).__name__}: {e}")
                 traceback.print_exc()
+        else:
+            plog("[PIPELINE] Scout skipped — RAG disabled or no SERPER_API_KEY")
 
-        # --- Stage 2: READER -- Scrape top sources -------
+        # ── Stage 2: READER ───────────────────────────────────────
         yield sse_stage("READER", 2, "Extracting content from sources...")
-        print(f"\n{'=' * 60}")
-        print(f"[SSE PIPELINE] Stage 2/4 -- READER: Extracting via Jina AI...")
-        print(f"{'=' * 60}")
+
+        plog("")
+        plog("=" * 60)
+        plog("[PIPELINE] Stage 2/4 — READER: Scraping top sources via Jina AI...")
+        plog("=" * 60)
 
         evidence = []
         if search_results:
@@ -143,15 +150,19 @@ async def pipeline_stream(
                 urls = [r.url for r in search_results if r.url]
                 evidence = await detector_reader.scrape_multiple(urls, max_sources=2)
             except Exception as e:
-                print(f"[SSE PIPELINE] WARNING: Reader failed: {type(e).__name__}: {e}")
+                plog(f"[PIPELINE] WARNING: Reader failed: {type(e).__name__}: {e}")
                 traceback.print_exc()
+        else:
+            plog("[PIPELINE] Reader skipped — no search results to scrape")
 
-        # --- Stage 3: ANALYST -- Cross-examination -------
-        mode = "EVIDENCE-BACKED" if evidence else "NO-EVIDENCE"
+        # ── Stage 3: ANALYST ──────────────────────────────────────
+        mode = "EVIDENCE-BACKED" if evidence else "INTERNAL-KNOWLEDGE"
         yield sse_stage("ANALYST", 3, f"Cross-examining claim ({mode})...")
-        print(f"\n{'=' * 60}")
-        print(f"[SSE PIPELINE] Stage 3/4 -- ANALYST: {mode} verification...")
-        print(f"{'=' * 60}")
+
+        plog("")
+        plog("=" * 60)
+        plog(f"[PIPELINE] Stage 3/4 — ANALYST: {mode} investigation...")
+        plog("=" * 60)
 
         verdict = await detector_analyst.investigate(
             claim=claim,
@@ -160,25 +171,30 @@ async def pipeline_stream(
             serper_query=serper_query,
         )
 
-        # --- Stage 4: VERDICT -- Finalize ----------------
+        # ── Stage 4: VERDICT ──────────────────────────────────────
         yield sse_stage("VERDICT", 4, "Compiling Verification Report...")
-        print(f"\n{'=' * 60}")
-        print(f"[SSE PIPELINE] Stage 4/4 -- VERDICT: Compiling report...")
-        print(f"{'=' * 60}")
 
-        print(f"\n{'=' * 60}")
-        print(f"[SSE PIPELINE] OK: STATUS: {verdict.verificationStatus} "
-              f"(risk: {verdict.riskScore}/100, confidence: {verdict.confidenceLevel.value})")
-        print(f"{'=' * 60}\n")
+        plog("")
+        plog("=" * 60)
+        plog("[PIPELINE] Stage 4/4 — VERDICT: Compiling final report...")
+        plog("=" * 60)
+        plog("")
+        plog("=" * 60)
+        plog(
+            f"[PIPELINE] OK: VERDICT: {'FRAUD' if verdict.isFraud else 'LEGITIMATE'} "
+            f"| Status: {verdict.verificationStatus} "
+            f"| Risk: {verdict.riskScore}/100 "
+            f"| Confidence: {verdict.confidenceLevel.value}"
+        )
+        plog("=" * 60)
+        plog("")
 
-        # --- Final: Emit completed event -----------------
         yield sse_completed(verdict)
 
     except Exception as e:
-        print(f"[SSE PIPELINE] FAIL: {type(e).__name__}: {e}")
+        plog(f"[PIPELINE] FAIL: {type(e).__name__}: {e}")
         traceback.print_exc()
 
-        # Emit error, then a fallback completed event
         yield sse_error(f"Pipeline error: {type(e).__name__}: {str(e)}")
         yield sse_completed(FraudDetectionResponse(
             isFraud=False,

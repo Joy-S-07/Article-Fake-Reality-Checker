@@ -18,6 +18,7 @@ import base64
 import io
 import json
 import re
+import sys
 import traceback
 from typing import Optional
 
@@ -40,7 +41,7 @@ try:
     TESSERACT_AVAILABLE = True
 except ImportError:
     TESSERACT_AVAILABLE = False
-    print("[IMAGE] WARNING: pytesseract not installed — OCR will be skipped")
+    print("[IMAGE] WARNING: pytesseract not installed — OCR will be skipped", flush=True)
 
 
 # ═══════════════════════════════════════════════════════
@@ -66,9 +67,9 @@ class SightEngineChecker:
         self.endpoint: str = settings.SIGHTENGINE_ENDPOINT
 
         if self.is_available:
-            print("[SIGHTENGINE] AI detection agent initialized")
+            print("[SIGHTENGINE] AI detection agent initialized", flush=True)
         else:
-            print("[SIGHTENGINE] WARNING: No credentials — AI detection will be skipped")
+            print("[SIGHTENGINE] WARNING: No credentials — AI detection will be skipped", flush=True)
 
     @property
     def is_available(self) -> bool:
@@ -91,7 +92,7 @@ class SightEngineChecker:
             AIDetectionResult with is_ai_generated flag and confidence score.
         """
         if not self.is_available:
-            print("[SIGHTENGINE] Skipped — no credentials configured")
+            print("[SIGHTENGINE] Skipped — no credentials configured", flush=True)
             return AIDetectionResult(
                 is_ai_generated=False,
                 ai_score=0.0,
@@ -124,7 +125,8 @@ class SightEngineChecker:
 
             print(
                 f"[SIGHTENGINE] AI score: {ai_score:.3f} → "
-                f"{'AI-GENERATED' if is_ai else 'REAL IMAGE'}"
+                f"{'AI-GENERATED' if is_ai else 'REAL IMAGE'}",
+                flush=True,
             )
 
             return AIDetectionResult(
@@ -134,7 +136,7 @@ class SightEngineChecker:
             )
 
         except httpx.TimeoutException:
-            print("[SIGHTENGINE] WARNING: Request timed out")
+            print("[SIGHTENGINE] WARNING: Request timed out", flush=True)
             return AIDetectionResult(
                 is_ai_generated=False,
                 ai_score=0.0,
@@ -143,7 +145,8 @@ class SightEngineChecker:
         except httpx.HTTPStatusError as e:
             print(
                 f"[SIGHTENGINE] WARNING: HTTP {e.response.status_code}: "
-                f"{e.response.text[:200]}"
+                f"{e.response.text[:200]}",
+                flush=True,
             )
             return AIDetectionResult(
                 is_ai_generated=False,
@@ -151,7 +154,7 @@ class SightEngineChecker:
                 details={"error": f"HTTP {e.response.status_code}"},
             )
         except Exception as e:
-            print(f"[SIGHTENGINE] WARNING: {type(e).__name__}: {e}")
+            print(f"[SIGHTENGINE] WARNING: {type(e).__name__}: {e}", flush=True)
             traceback.print_exc()
             return AIDetectionResult(
                 is_ai_generated=False,
@@ -184,9 +187,9 @@ class ImageContentExtractor:
         self.api_key: Optional[str] = settings.OPENROUTER_API_KEY
         self.base_url: str = settings.OPENROUTER_BASE_URL
 
-        print(f"[EXTRACTOR] Content extractor initialized")
-        print(f"[EXTRACTOR]   OCR: {'available' if TESSERACT_AVAILABLE else 'unavailable'}")
-        print(f"[EXTRACTOR]   Vision model: {self.vision_model}")
+        print(f"[EXTRACTOR] Content extractor initialized", flush=True)
+        print(f"[EXTRACTOR]   OCR: {'available' if TESSERACT_AVAILABLE else 'unavailable'}", flush=True)
+        print(f"[EXTRACTOR]   Vision model: {self.vision_model}", flush=True)
 
     async def extract(self, image_bytes: bytes) -> ContentExtractionResult:
         """
@@ -203,29 +206,29 @@ class ImageContentExtractor:
             try:
                 ocr_text = await self._extract_ocr(image_bytes)
                 if ocr_text and len(ocr_text.strip()) > 10:
-                    print(f"[EXTRACTOR] OCR extracted {len(ocr_text)} chars")
+                    print(f"[EXTRACTOR] OCR extracted {len(ocr_text)} chars", flush=True)
                     return ContentExtractionResult(
                         method="ocr",
                         extracted_text=ocr_text.strip(),
                         success=True,
                     )
                 else:
-                    print("[EXTRACTOR] OCR found no meaningful text — falling back to Vision")
+                    print("[EXTRACTOR] OCR found no meaningful text — falling back to Vision", flush=True)
             except Exception as e:
-                print(f"[EXTRACTOR] OCR failed: {type(e).__name__}: {e}")
+                print(f"[EXTRACTOR] OCR failed: {type(e).__name__}: {e}", flush=True)
 
         # ─── Step B: Vision model fallback ─────────────
         try:
             vision_text = await self._extract_vision(image_bytes)
             if vision_text:
-                print(f"[EXTRACTOR] Vision model described image ({len(vision_text)} chars)")
+                print(f"[EXTRACTOR] Vision model described image ({len(vision_text)} chars)", flush=True)
                 return ContentExtractionResult(
                     method="vision",
                     extracted_text=vision_text.strip(),
                     success=True,
                 )
         except Exception as e:
-            print(f"[EXTRACTOR] Vision model failed: {type(e).__name__}: {e}")
+            print(f"[EXTRACTOR] Vision model failed: {type(e).__name__}: {e}", flush=True)
             traceback.print_exc()
 
         # ─── Both failed ──────────────────────────────
@@ -423,7 +426,7 @@ async def run_custom_reality_check(
             default_headers=extra_headers if extra_headers else None,
         )
 
-        print("\n[REALITY CHECK] ─── AUDITOR-7 STREAMING ───")
+        print("\n[REALITY CHECK] ─── AUDITOR-7 STREAMING ───", flush=True)
 
         completion = await client.chat.completions.create(
             model=settings.OPENROUTER_MODEL_NAME,
@@ -442,9 +445,10 @@ async def run_custom_reality_check(
         async for chunk in completion:
             delta = chunk.choices[0].delta.content or ""
             collected.append(delta)
-            print(delta, end="", flush=True)
+            sys.stdout.write(delta)
+            sys.stdout.flush()
 
-        print("\n[REALITY CHECK] ─── END STREAM ─────────────\n")
+        print("\n[REALITY CHECK] ─── END STREAM ─────────────\n", flush=True)
 
         raw_text = "".join(collected).strip()
 
@@ -485,7 +489,7 @@ async def run_custom_reality_check(
         )
 
     except Exception as e:
-        print(f"[REALITY CHECK] FAIL: {type(e).__name__}: {e}")
+        print(f"[REALITY CHECK] FAIL: {type(e).__name__}: {e}", flush=True)
         traceback.print_exc()
 
         return ImageAnalysisResult(
@@ -524,7 +528,7 @@ def _parse_json_response(raw_text: str) -> dict:
         except json.JSONDecodeError:
             pass
 
-    print(f"[REALITY CHECK] WARNING: Could not parse JSON. Raw: {raw_text[:500]}")
+    print(f"[REALITY CHECK] WARNING: Could not parse JSON. Raw: {raw_text[:500]}", flush=True)
     return {
         "isFraud": False,
         "riskScore": 50,

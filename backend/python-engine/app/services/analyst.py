@@ -18,6 +18,7 @@ Author: Joy-S-07
 
 import json
 import re
+import sys
 import traceback
 from typing import List, Optional
 
@@ -200,7 +201,7 @@ class Analyst:
         self.model_name = settings.OPENROUTER_MODEL_NAME
         self.temperature = settings.OPENROUTER_TEMPERATURE
 
-        print(f"[ANALYST] AUDITOR-7 initialized (async) -- model: {self.model_name}")
+        print(f"[ANALYST] AUDITOR-7 initialized (async) -- model: {self.model_name}", flush=True)
 
     async def investigate(
         self,
@@ -281,7 +282,7 @@ class Analyst:
             )
 
         except Exception as e:
-            print(f"[ANALYST] WARNING: Error: {type(e).__name__}: {e}")
+            print(f"[ANALYST] WARNING: Error: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
             traceback.print_exc()
 
             # ─── Build structured error response ──────────
@@ -427,14 +428,10 @@ class Analyst:
         Call OpenRouter with streaming enabled and assemble the full response.
 
         Uses AsyncOpenAI so that the asyncio event loop is NOT blocked
-        while waiting for OpenRouter chunks. This is critical — the previous
-        synchronous client caused uvicorn to hang, timing out the Node
-        gateway and triggering a 502 on the frontend.
-
-        Streams chunks to stdout for real-time development visibility.
-        Returns the fully assembled response text.
+        while waiting for OpenRouter chunks. Writes directly to sys.stdout
+        and calls sys.stdout.flush() to guarantee real-time chunks in the terminal.
         """
-        print("\n[ANALYST] --- AUDITOR-7 STREAMING ---")
+        print("\n[ANALYST] --- AUDITOR-7 STREAMING ---", flush=True)
 
         completion = await self.client.chat.completions.create(
             model=self.model_name,
@@ -453,9 +450,12 @@ class Analyst:
         async for chunk in completion:
             delta = chunk.choices[0].delta.content or ""
             collected.append(delta)
-            print(delta, end="", flush=True)
 
-        print("\n[ANALYST] --- END STREAM ---\n")
+            # Write directly to system output and force flush OS buffer
+            sys.stdout.write(delta)
+            sys.stdout.flush()
+
+        print("\n\n[ANALYST] --- END STREAM ---\n", flush=True)
 
         return "".join(collected).strip()
 
@@ -470,52 +470,62 @@ class Analyst:
 
         # Strip markdown code fences if present
         if cleaned.startswith("```"):
-            cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
-            cleaned = re.sub(r"\s*```$", "", cleaned)
+            cleaned = re.sub(r"^```(?:json)?\s*\n?", "", cleaned)
+            cleaned = re.sub(r"\n?```\s*$", "", cleaned)
 
-        # Try direct parse
+        cleaned = cleaned.strip()
+
+        # Extract the outermost JSON object if surrounded by stray text
+        json_match = re.search(r"\{.*\}", cleaned, re.DOTALL)
+        if json_match:
+            cleaned = json_match.group(0)
+
         try:
             return json.loads(cleaned)
-        except json.JSONDecodeError:
-            pass
+        except json.JSONDecodeError as exc:
+            print(
+                f"[ANALYST] WARNING: JSON parse failed — {exc}\n"
+                f"Raw response (first 500 chars):\n{raw_text[:500]}",
+                file=sys.stderr,
+                flush=True,
+            )
+            # Return a safe fallback dict so the caller can still build a response
+            return {
+                "verificationStatus": "CONTRADICTED",
+                "isFraud": True,
+                "riskScore": 50,
+                "confidenceLevel": "Medium",
+                "flags": [f"JSON parse error: {exc}"],
+                "analysisSummary": (
+                    "The AI returned a response that could not be parsed as valid JSON. "
+                    "This is an internal error — please check server logs for the raw output."
+                ),
+                "evidenceTimeline": [],
+            }
 
-        # Fallback: find the first { ... } block
-        match = re.search(r"\{[\s\S]*\}", cleaned)
-        if match:
-            try:
-                return json.loads(match.group())
-            except json.JSONDecodeError:
-                pass
+    # ─── Confidence Normalizer ────────────────────────
 
-        # Last resort: structured fallback
-        print(f"[ANALYST] WARNING: Could not parse JSON. Raw: {raw_text[:500]}")
-        return {
-            "verificationStatus": "CONTRADICTED",
-            "isFraud": True,
-            "riskScore": 50,
-            "confidenceLevel": "Medium",
-            "flags": ["Could not parse AI response"],
-            "analysisSummary": raw_text[:1000],
-            "evidenceTimeline": [],
-        }
-
-    def _normalize_confidence(self, value: str) -> ConfidenceLevel:
-        """Map the model's confidence string to the enum, with fallback."""
-        mapping = {
+    def _normalize_confidence(self, level: str) -> ConfidenceLevel:
+        """Map raw string confidence level to the ConfidenceLevel enum."""
+        mapping: dict[str, ConfidenceLevel] = {
             "low": ConfidenceLevel.LOW,
             "medium": ConfidenceLevel.MEDIUM,
             "high": ConfidenceLevel.HIGH,
             "critical": ConfidenceLevel.CRITICAL,
         }
-        return mapping.get(value.lower().strip(), ConfidenceLevel.MEDIUM)
+        return mapping.get(level.strip().lower(), ConfidenceLevel.MEDIUM)
+
+    # ─── Source Builder ───────────────────────────────
 
     def _build_sources(self, search_results: List[SearchResult]) -> List[SourceReference]:
-        """Convert SearchResult objects into SourceReference schema objects."""
-        return [
-            SourceReference(
-                title=r.title,
-                url=r.url,
-                snippet=r.snippet,
+        """Convert raw Serper search results into structured SourceReference objects."""
+        sources: list[SourceReference] = []
+        for r in search_results[:5]:
+            sources.append(
+                SourceReference(
+                    title=r.title,
+                    url=r.url,
+                    snippet=r.snippet,
+                )
             )
-            for r in search_results[:5]
-        ]
+        return sources

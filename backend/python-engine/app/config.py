@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     # OpenRouter model configuration
     OPENROUTER_API_KEY: Optional[str] = None
     ALLOWED_ORIGINS: str = "http://localhost:5000"
-    OPENROUTER_MODEL_NAME: str = "openrouter/auto"
+    OPENROUTER_MODEL_NAME: str = "openrouter/free"
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
     OPENROUTER_TEMPERATURE: float = 0.3
     OPENROUTER_SITE_URL: Optional[str] = None   # For OpenRouter rankings
@@ -43,8 +43,6 @@ class Settings(BaseSettings):
     # LLaMA Vision Model (fallback content extraction)
     LLAMA_VISION_MODEL: str = "meta-llama/llama-4-scout-17b-16e-instruct"
 
-    # Optional external APIs (not used by core pipeline)
-    NEWS_API: Optional[str] = None
 
     class Config:
         env_file = str(_ENV_FILE)

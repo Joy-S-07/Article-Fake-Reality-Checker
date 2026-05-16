@@ -6,7 +6,7 @@ progresses through each stage. Self-contained HTML UI served at /image-checker.
 
 Pipeline Stages (4-stage RAG pipeline):
     1. EXTRACTING_CONTENT  → OCR or LLaMA Vision fallback
-    2. SEARCHING_EVIDENCE  → Scout: NewsAPI (priority) → Serper (fallback)
+    2. SEARCHING_EVIDENCE  → Scout: Serper.dev web search
     3. SCRAPING_SOURCES    → Reader: Jina AI scrapes top sources
     4. VERIFYING_REALITY   → Analyst: Evidence-backed forensic verification
     5. COMPLETED/ERROR     → Final verdict or error
@@ -89,7 +89,7 @@ async def image_pipeline_stream(
 
     Pipeline:
         1. EXTRACTING_CONTENT → OCR / Vision extraction
-        2. SEARCHING_EVIDENCE → NewsAPI (priority) → Serper (fallback)
+        2. SEARCHING_EVIDENCE → Serper.dev web search
         3. SCRAPING_SOURCES   → Jina AI Reader
         4. VERIFYING_REALITY  → Analyst cross-examination with evidence
     """
@@ -137,27 +137,10 @@ async def image_pipeline_stream(
 
         search_results = []
         serper_query = f"fact check {claim.strip()[:300]}"
-        news_source_used = False
 
-        # Step 2a: Try NewsAPI first (news-first verification)
+        # Search for evidence via Serper web search
         scout = _get_scout()
-        if scout.is_news_available:
-            try:
-                print(f"\n{'═' * 60}")
-                print(f"[IMAGE PIPELINE] Stage 2a — NEWS SEARCH (NewsAPI.org)...")
-                print(f"{'═' * 60}")
-                search_results = await scout.search_news(claim)
-                if search_results:
-                    news_source_used = True
-                    print(f"[IMAGE PIPELINE] ✓ Found {len(search_results)} news articles — using news evidence")
-                else:
-                    print(f"[IMAGE PIPELINE] ✗ No news articles found — falling back to web search")
-            except Exception as e:
-                print(f"[IMAGE PIPELINE] WARNING: NewsAPI failed: {type(e).__name__}: {e}")
-                traceback.print_exc()
-
-        # Step 2b: Fall back to Serper web search if no news results
-        if not search_results and scout.is_available:
+        if scout.is_available:
             try:
                 print(f"\n{'═' * 60}")
                 print(f"[IMAGE PIPELINE] Stage 2b — WEB SEARCH (Serper.dev)...")
