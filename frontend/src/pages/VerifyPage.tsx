@@ -13,10 +13,12 @@ import {
   X,
   CheckCircle2,
   AlertTriangle,
+  Calendar,
+  Trash2,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { type FraudResult, type FraudCheckPayload } from '../services/api';
+import { type FraudResult, type FraudCheckPayload, type ImageAnalysisResult, type ImageStreamEvent, imageAPI } from '../services/api';
 import { FraudDetection } from '../components';
 
 type VerifyTab = 'text' | 'url' | 'image';
@@ -30,6 +32,18 @@ export function VerifyPage() {
   const [urlInput, setUrlInput] = useState('');
   const [activeTab, setActiveTab] = useState<VerifyTab>('text');
 
+  // ─── Image State ────────────────────────────────
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageDate, setImageDate] = useState('');
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isImageAnalyzing, setIsImageAnalyzing] = useState(false);
+  const [imageResult, setImageResult] = useState<ImageAnalysisResult | null>(null);
+  const [imageStages, setImageStages] = useState<{ stage: string; text: string; status: 'waiting' | 'running' | 'done' }[]>([
+    { stage: 'DETECTING_AI', text: 'AI Detection', status: 'waiting' },
+    { stage: 'EXTRACTING_CONTENT', text: 'Content Extraction', status: 'waiting' },
+    { stage: 'VERIFYING_REALITY', text: 'Reality Verification', status: 'waiting' },
+  ]);
+
   // ─── Analysis State ──────────────────────────────
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<FraudResult | null>(null);
@@ -38,6 +52,7 @@ export function VerifyPage() {
 
   // ─── Auto-scroll ref ────────────────────────────
   const resultRef = useRef<HTMLDivElement>(null);
+  const imageFileInputRef = useRef<HTMLInputElement>(null);
 
   // Guest mode — no redirect, just show a banner below
 
@@ -77,6 +92,89 @@ export function VerifyPage() {
     });
   };
 
+  // ─── Image File Handling ──────────────────────────
+  const handleImageSelect = (file: File) => {
+    if (!file.type.match(/^image\/(jpeg|png|webp)$/)) {
+      setError('Please upload a valid image (JPG, PNG, or WEBP).');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError('Image must be smaller than 10MB.');
+      return;
+    }
+    setImageFile(file);
+    setError(null);
+    setImageResult(null);
+    setActiveTab('image');
+    // Create preview URL
+    const reader = new FileReader();
+    reader.onload = (e) => setImagePreview(e.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleImageDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file) handleImageSelect(file);
+  };
+
+  const handleImageRemove = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    setImageResult(null);
+    if (imageFileInputRef.current) imageFileInputRef.current.value = '';
+  };
+
+  // ─── Submit Image Verification ────────────────────
+  const handleImageSubmit = async () => {
+    if (!imageFile) {
+      setError('Please select an image to verify.');
+      return;
+    }
+    if (!imageDate) {
+      setError('Please enter the claimed date for this image.');
+      return;
+    }
+
+    setError(null);
+    setImageResult(null);
+    setIsImageAnalyzing(true);
+    setImageStages([
+      { stage: 'DETECTING_AI', text: 'AI Detection', status: 'waiting' },
+      { stage: 'EXTRACTING_CONTENT', text: 'Content Extraction', status: 'waiting' },
+      { stage: 'VERIFYING_REALITY', text: 'Reality Verification', status: 'waiting' },
+    ]);
+
+    try {
+      await imageAPI.checkStream(imageFile, imageDate, (event: ImageStreamEvent) => {
+        if (event.type === 'stage') {
+          setImageStages(prev =>
+            prev.map(s => {
+              if (s.stage === event.stage) return { ...s, text: event.text, status: 'running' };
+              // Mark earlier stages as done
+              const stageOrder = ['DETECTING_AI', 'EXTRACTING_CONTENT', 'VERIFYING_REALITY'];
+              const eventIdx = stageOrder.indexOf(event.stage);
+              const sIdx = stageOrder.indexOf(s.stage);
+              if (sIdx < eventIdx && s.status === 'running') return { ...s, status: 'done' };
+              return s;
+            })
+          );
+        } else if (event.type === 'completed') {
+          setImageStages(prev => prev.map(s => ({ ...s, status: 'done' })));
+          setImageResult(event.data);
+          setIsImageAnalyzing(false);
+        } else if (event.type === 'error') {
+          setError(event.message);
+          setIsImageAnalyzing(false);
+        }
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Image analysis failed.';
+      setError(msg);
+      setIsImageAnalyzing(false);
+    }
+  };
+
   // ─── Core Analysis Function (SSE-based) ──────────
   const runAnalysis = async (payload: Record<string, unknown>) => {
     setError(null);
@@ -107,13 +205,13 @@ export function VerifyPage() {
 
   // ─── Auto-scroll when result or loading appears ──
   useEffect(() => {
-    if (result || isAnalyzing) {
+    if (result || isAnalyzing || isImageAnalyzing || imageResult) {
       // Small delay to let the DOM render/animate
       setTimeout(() => {
         resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 150);
     }
-  }, [result, isAnalyzing]);
+  }, [result, isAnalyzing, isImageAnalyzing, imageResult]);
 
   // ─── Get confidence color ────────────────────────
   const getConfidenceColor = (level: string) => {
@@ -296,27 +394,87 @@ export function VerifyPage() {
               <ImageIcon size={28} className="text-green-600 dark:text-green-400 group-hover:text-primary transition-colors" />
             </div>
             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-gray-900 mb-3">Image Verifier</h2>
-            <p className="text-slate-600 dark:text-gray-600 text-sm mb-8 flex-1">
+            <p className="text-slate-600 dark:text-gray-600 text-sm mb-4 flex-1">
               Detect manipulated visuals, AI generation, and synthetic fabrications.
             </p>
             
-            <div
-              onClick={() => setActiveTab('image')}
-              className="border-2 border-dashed border-slate-300 dark:border-gray-300 hover:border-primary/50 dark:hover:border-primary/50 rounded-2xl p-6 flex flex-col items-center justify-center mb-6 bg-slate-50 dark:bg-white/30 transition-colors cursor-pointer group/drop"
-            >
-              <div className="w-12 h-12 rounded-full bg-slate-200 dark:bg-gray-100 flex items-center justify-center mb-3 group-hover/drop:bg-primary/20 transition-colors">
-                <UploadCloud size={20} className="text-gray-500 dark:text-gray-600 group-hover/drop:text-primary" />
+            {/* Upload Dropzone / Preview */}
+            {!imageFile ? (
+              <div
+                onClick={() => { setActiveTab('image'); imageFileInputRef.current?.click(); }}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={handleImageDrop}
+                className="border-2 border-dashed border-slate-300 dark:border-gray-300 hover:border-primary/50 dark:hover:border-primary/50 rounded-2xl p-6 flex flex-col items-center justify-center mb-4 bg-slate-50 dark:bg-white/30 transition-colors cursor-pointer group/drop"
+              >
+                <input
+                  ref={imageFileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleImageSelect(file);
+                  }}
+                />
+                <div className="w-12 h-12 rounded-full bg-slate-200 dark:bg-gray-100 flex items-center justify-center mb-3 group-hover/drop:bg-primary/20 transition-colors">
+                  <UploadCloud size={20} className="text-gray-500 dark:text-gray-600 group-hover/drop:text-primary" />
+                </div>
+                <p className="text-slate-700 dark:text-gray-700 font-medium text-sm mb-1">Click or drag image to upload</p>
+                <p className="text-gray-500 text-xs">PNG, JPG or WEBP (max. 10MB)</p>
               </div>
-              <p className="text-slate-700 dark:text-gray-700 font-medium text-sm mb-1">Click or drag image to upload</p>
-              <p className="text-gray-500 text-xs">PNG, JPG or WEBP (max. 10MB)</p>
+            ) : (
+              <div className="relative border border-slate-200 dark:border-gray-300/50 rounded-2xl p-3 mb-4 bg-slate-50 dark:bg-white/30">
+                <button
+                  type="button"
+                  onClick={handleImageRemove}
+                  disabled={isImageAnalyzing}
+                  className="absolute top-2 right-2 z-10 w-7 h-7 bg-red-500/90 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-colors disabled:opacity-40"
+                >
+                  <Trash2 size={14} />
+                </button>
+                <div className="flex items-center gap-3">
+                  {imagePreview && (
+                    <img src={imagePreview} alt="Preview" className="w-16 h-16 object-cover rounded-xl border border-slate-200" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-800 dark:text-gray-800 truncate">{imageFile.name}</p>
+                    <p className="text-xs text-gray-500">{(imageFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                  </div>
+                  <CheckCircle2 size={20} className="text-green-500 flex-shrink-0" />
+                </div>
+              </div>
+            )}
+
+            {/* Date Input */}
+            <div className="relative mb-4">
+              <label className="block text-xs font-semibold text-slate-600 dark:text-gray-600 mb-1.5 tracking-wide uppercase">Claimed Date</label>
+              <div className="relative">
+                <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                <input
+                  type="date"
+                  value={imageDate}
+                  onChange={(e) => setImageDate(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-gray-300/50 bg-white dark:bg-white/40 text-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
+                  placeholder="When was this image reportedly taken?"
+                />
+              </div>
             </div>
-            
+
+            {/* Submit Button */}
             <button
               type="button"
-              disabled
-              className="w-full bg-primary/50 text-black/50 rounded-xl py-3 font-bold transition-all duration-300 mt-auto cursor-not-allowed flex items-center justify-center gap-2"
+              onClick={handleImageSubmit}
+              disabled={isImageAnalyzing || !imageFile || !imageDate}
+              className="w-full bg-gray-100 dark:bg-gray-100 text-gray-900 hover:bg-primary hover:text-black rounded-xl py-3 font-semibold transition-all duration-300 shadow-lg hover:shadow-[0_0_15px_rgba(0,240,255,0.3)] mt-auto disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              Coming Soon
+              {isImageAnalyzing ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  Analyzing...
+                </>
+              ) : (
+                'Analyze Image'
+              )}
             </button>
           </motion.div>
 
@@ -358,6 +516,190 @@ export function VerifyPage() {
                 onCompleted={handleStreamCompleted}
                 onError={handleStreamError}
               />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ─── Image Pipeline Stages ─────────────────── */}
+        <AnimatePresence>
+          {isImageAnalyzing && (
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 30 }}
+              transition={{ duration: 0.5 }}
+              className="mt-10"
+              ref={resultRef}
+            >
+              <div className="bg-white dark:bg-white rounded-2xl sm:rounded-[2rem] p-6 sm:p-8 border border-slate-200 dark:border-gray-200/50 shadow-2xl">
+                <h3 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-3">
+                  <Loader2 size={22} className="animate-spin text-primary" />
+                  Image Analysis Pipeline
+                </h3>
+                <div className="space-y-4">
+                  {imageStages.map((stage, i) => (
+                    <motion.div
+                      key={stage.stage}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.1 * i }}
+                      className="flex items-center gap-4"
+                    >
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-500 ${
+                        stage.status === 'done' ? 'bg-green-100 border border-green-300' :
+                        stage.status === 'running' ? 'bg-primary/20 border border-primary/50 animate-pulse' :
+                        'bg-gray-100 border border-gray-200'
+                      }`}>
+                        {stage.status === 'done' ? (
+                          <CheckCircle2 size={16} className="text-green-600" />
+                        ) : stage.status === 'running' ? (
+                          <Loader2 size={16} className="text-primary animate-spin" />
+                        ) : (
+                          <span className="w-2 h-2 rounded-full bg-gray-300" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <p className={`text-sm font-medium ${
+                          stage.status === 'done' ? 'text-green-700' :
+                          stage.status === 'running' ? 'text-slate-900' :
+                          'text-gray-400'
+                        }`}>
+                          {stage.text}
+                        </p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ─── Image Analysis Results ─────────────────── */}
+        <AnimatePresence>
+          {imageResult && (
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 30 }}
+              transition={{ duration: 0.5 }}
+              className="mt-10"
+            >
+              <div className="bg-white dark:bg-white rounded-2xl sm:rounded-[2rem] p-5 sm:p-8 lg:p-10 border border-slate-200 dark:border-gray-200/50 shadow-2xl">
+                
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-3">
+                  <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
+                    {imageResult.isFraud ? (
+                      <ShieldAlert size={28} className="text-red-500" />
+                    ) : (
+                      <ShieldCheck size={28} className="text-green-500" />
+                    )}
+                    Image Analysis Results
+                  </h2>
+                  <button
+                    onClick={() => setImageResult(null)}
+                    className="text-gray-600 hover:text-slate-600 transition p-2 rounded-xl hover:bg-slate-100"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+                  
+                  {/* Verdict Badge */}
+                  <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 flex flex-col items-center justify-center text-center">
+                    <h4 className="text-gray-500 font-medium mb-4 uppercase tracking-wide text-xs">Verdict</h4>
+                    <div className={`px-5 py-2.5 rounded-full font-bold text-lg ${
+                      imageResult.verdict === 'VERIFIED_REAL' ? 'bg-green-100 text-green-700 border border-green-300' :
+                      imageResult.verdict === 'AI_GENERATED' ? 'bg-red-100 text-red-700 border border-red-300' :
+                      imageResult.verdict === 'MISLEADING' ? 'bg-orange-100 text-orange-700 border border-orange-300' :
+                      'bg-gray-100 text-gray-700 border border-gray-300'
+                    }`}>
+                      {imageResult.verdict?.replace(/_/g, ' ')}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-3">Confidence: {imageResult.confidenceLevel}</p>
+                  </div>
+
+                  {/* AI Detection Score */}
+                  <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 flex flex-col items-center justify-center text-center">
+                    <h4 className="text-gray-500 font-medium mb-4 uppercase tracking-wide text-xs">AI Detection</h4>
+                    <div className="relative w-28 h-28 mb-3">
+                      <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="40" fill="transparent" stroke="#e5e7eb" strokeWidth="8" />
+                        <motion.circle
+                          cx="50" cy="50" r="40"
+                          fill="transparent"
+                          stroke={(imageResult.aiDetectionScore || 0) * 100 >= 50 ? '#ef4444' : '#22c55e'}
+                          strokeWidth="8"
+                          strokeLinecap="round"
+                          initial={{ strokeDasharray: "251.2", strokeDashoffset: "251.2" }}
+                          animate={{ strokeDashoffset: 251.2 * (1 - (imageResult.aiDetectionScore || 0)) }}
+                          transition={{ duration: 1.5, ease: "easeOut" }}
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className={`font-mono text-2xl font-bold ${
+                          (imageResult.aiDetectionScore || 0) * 100 >= 50 ? 'text-red-500' : 'text-green-500'
+                        }`}>
+                          {Math.round((imageResult.aiDetectionScore || 0) * 100)}%
+                        </span>
+                        <span className="text-gray-500 text-xs">AI Score</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Risk Score */}
+                  <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 flex flex-col items-center justify-center text-center">
+                    <h4 className="text-gray-500 font-medium mb-4 uppercase tracking-wide text-xs">Risk Score</h4>
+                    <div className={`text-5xl font-mono font-bold ${
+                      imageResult.riskScore >= 70 ? 'text-red-500' :
+                      imageResult.riskScore >= 40 ? 'text-orange-500' :
+                      'text-green-500'
+                    }`}>
+                      {imageResult.riskScore}
+                    </div>
+                    <span className="text-gray-500 text-xs mt-1">/100</span>
+                  </div>
+                </div>
+
+                {/* Flags */}
+                {imageResult.flags && imageResult.flags.length > 0 && (
+                  <div className="mt-6 bg-slate-50 rounded-2xl p-6 border border-slate-200">
+                    <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Detected Flags</h4>
+                    <div className="space-y-2">
+                      {imageResult.flags.map((flag, i) => (
+                        <motion.div
+                          key={i}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.1 * i }}
+                          className="flex items-start gap-2 text-sm"
+                        >
+                          <AlertTriangle size={14} className="text-orange-500 mt-0.5 flex-shrink-0" />
+                          <span className="text-slate-700">{flag}</span>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Extracted Content */}
+                {imageResult.extractedContent && (
+                  <div className="mt-6 bg-slate-50 rounded-2xl p-6 border border-slate-200">
+                    <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                      Extracted Content ({imageResult.extractionMethod})
+                    </h4>
+                    <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap">{imageResult.extractedContent}</p>
+                  </div>
+                )}
+
+                {/* Analysis Summary */}
+                <div className="mt-6 bg-slate-50 rounded-2xl p-6 border border-slate-200">
+                  <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Analysis Summary</h4>
+                  <p className="text-slate-800 leading-relaxed">{imageResult.analysisSummary}</p>
+                </div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

@@ -339,4 +339,134 @@ export const guestAPI = {
     }>("/guest/history", { params: { sessionId, page, limit } }),
 };
 
+// ─── Image Analysis Types ──────────────────────────
+
+export type ImageVerdict = "AI_GENERATED" | "VERIFIED_REAL" | "MISLEADING" | "UNVERIFIABLE";
+export type ImageConfidence = "Low" | "Medium" | "High" | "Critical";
+
+export interface ImageAnalysisResult {
+  verdict: ImageVerdict;
+  isFraud: boolean;
+  riskScore: number;
+  confidenceLevel: ImageConfidence;
+  flags: string[];
+  analysisSummary: string;
+  extractionMethod: string | null;
+  extractedContent: string | null;
+  userDate: string | null;
+  aiDetectionScore: number | null;
+}
+
+export type ImageStageEvent = {
+  type: "stage";
+  stage: string;
+  sequence: number;
+  text: string;
+};
+
+export type ImageAIDetectionEvent = {
+  type: "ai_detection";
+  is_ai_generated: boolean;
+  ai_score: number;
+};
+
+export type ImageExtractionEvent = {
+  type: "extraction";
+  method: string;
+  success: boolean;
+  preview: string;
+};
+
+export type ImageCompletedEvent = {
+  type: "completed";
+  data: ImageAnalysisResult;
+};
+
+export type ImageErrorEvent = {
+  type: "error";
+  message: string;
+};
+
+export type ImageStreamEvent =
+  | ImageStageEvent
+  | ImageAIDetectionEvent
+  | ImageExtractionEvent
+  | ImageCompletedEvent
+  | ImageErrorEvent;
+
+// ─── Image API ─────────────────────────────────────
+
+const PYTHON_ENGINE_URL = import.meta.env.VITE_PYTHON_ENGINE_URL || "http://localhost:8000";
+
+export const imageAPI = {
+  /**
+   * Stream image analysis via SSE (direct to Python engine).
+   * Uses fetch + ReadableStream for POST-based multipart SSE.
+   */
+  checkStream: async (
+    file: File,
+    date: string,
+    onEvent: (event: ImageStreamEvent) => void,
+    signal?: AbortSignal,
+  ): Promise<void> => {
+    const formData = new FormData();
+    formData.append("image", file);
+    formData.append("date", date);
+
+    const response = await fetch(`${PYTHON_ENGINE_URL}/image/stream`, {
+      method: "POST",
+      body: formData,
+      signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Image analysis failed: HTTP ${response.status}`);
+    }
+
+    const reader = response.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      let eventType = "";
+      let eventData = "";
+
+      for (const line of lines) {
+        if (line.startsWith("event: ")) {
+          eventType = line.slice(7).trim();
+        } else if (line.startsWith("data: ")) {
+          eventData = line.slice(6);
+          if (eventType && eventData) {
+            try {
+              const parsed = JSON.parse(eventData);
+              if (eventType === "stage") {
+                onEvent({ type: "stage", stage: parsed.stage, sequence: parsed.sequence, text: parsed.text });
+              } else if (eventType === "ai_detection") {
+                onEvent({ type: "ai_detection", is_ai_generated: parsed.is_ai_generated, ai_score: parsed.ai_score });
+              } else if (eventType === "extraction") {
+                onEvent({ type: "extraction", method: parsed.method, success: parsed.success, preview: parsed.preview });
+              } else if (eventType === "completed") {
+                onEvent({ type: "completed", data: parsed });
+              } else if (eventType === "error") {
+                onEvent({ type: "error", message: parsed.message });
+              }
+            } catch {
+              console.warn("[IMAGE SSE] Failed to parse event:", eventData);
+            }
+            eventType = "";
+            eventData = "";
+          }
+        }
+      }
+    }
+  },
+};
+
 export default api;
