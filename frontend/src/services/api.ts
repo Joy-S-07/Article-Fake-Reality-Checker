@@ -177,12 +177,95 @@ export const authAPI = {
     ),
 };
 
+// ─── SSE Stream Types ──────────────────────────────
+
+export type FraudStageEvent = {
+  type: 'stage';
+  stage: string;
+  sequence: number;
+  text: string;
+};
+
+export type FraudCompletedEvent = {
+  type: 'completed';
+  result: FraudResult;
+};
+
+export type FraudErrorEvent = {
+  type: 'error';
+  message: string;
+};
+
+export type FraudStreamEvent = FraudStageEvent | FraudCompletedEvent | FraudErrorEvent;
+
 // ─── Fraud API ─────────────────────────────────────
 
 export const fraudAPI = {
   /** Submit data for fraud analysis (proxied to Python engine) */
   check: (payload: FraudCheckPayload) =>
     api.post<{ success: boolean; data: FraudReport }>("/fraud/check", payload),
+
+  /**
+   * Stream fraud analysis via SSE (real-time pipeline stages).
+   * Uses @microsoft/fetch-event-source for POST-based SSE.
+   */
+  checkStream: async (
+    payload: FraudCheckPayload,
+    onEvent: (event: FraudStreamEvent) => void,
+    signal?: AbortSignal,
+  ): Promise<void> => {
+    const { fetchEventSource } = await import("@microsoft/fetch-event-source");
+
+    const baseURL = import.meta.env.VITE_API_BASE_URL;
+    const token = localStorage.getItem("token");
+    const guestSessionId = localStorage.getItem("guestSessionId");
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    if (guestSessionId) headers["X-Guest-Session-Id"] = guestSessionId;
+
+    await fetchEventSource(`${baseURL}/fraud/check/stream`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+      signal,
+      openWhenHidden: true,
+
+      onmessage(msg) {
+        if (!msg.data) return;
+        try {
+          const parsed = JSON.parse(msg.data);
+          if (msg.event === "stage") {
+            onEvent({
+              type: "stage",
+              stage: parsed.stage,
+              sequence: parsed.sequence,
+              text: parsed.text,
+            });
+          } else if (msg.event === "completed") {
+            onEvent({
+              type: "completed",
+              result: parsed.result,
+            });
+          } else if (msg.event === "error") {
+            onEvent({
+              type: "error",
+              message: parsed.message,
+            });
+          }
+        } catch {
+          console.warn("[SSE] Failed to parse event data:", msg.data);
+        }
+      },
+
+      onerror(err) {
+        // Throw to stop retrying
+        throw err;
+      },
+    });
+  },
 
   /** Get paginated list of user's fraud reports */
   getReports: (page = 1, limit = 20) =>

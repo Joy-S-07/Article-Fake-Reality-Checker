@@ -34,6 +34,18 @@ class Settings(BaseSettings):
     # Pipeline configuration
     ENABLE_RAG_PIPELINE: bool = True  # Toggle RAG vs. legacy analysis-only
 
+    # ─── Image Reality Checker ──────────────────────
+    # Sightengine API (AI-generated image detection)
+    SIGHTENGINE_API_USER: Optional[str] = None
+    SIGHTENGINE_API_SECRET: Optional[str] = None
+    SIGHTENGINE_ENDPOINT: str = "https://api.sightengine.com/1.0/check.json"
+
+    # LLaMA Vision Model (fallback content extraction)
+    LLAMA_VISION_MODEL: str = "meta-llama/llama-4-scout-17b-16e-instruct"
+
+    # Optional external APIs (not used by core pipeline)
+    NEWS_API: Optional[str] = None
+
     class Config:
         env_file = str(_ENV_FILE)
         env_file_encoding = "utf-8"

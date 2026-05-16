@@ -10,6 +10,8 @@ from contextlib import asynccontextmanager
 
 from app.config import settings
 from app.routes import detection
+from app.routes import sse
+from app.routes import image_sse
 
 
 @asynccontextmanager
@@ -65,3 +67,5 @@ async def health_check():
 
 # ─── Register Routes ──────────────────────────────
 app.include_router(detection.router)
+app.include_router(sse.router)
+app.include_router(image_sse.router)

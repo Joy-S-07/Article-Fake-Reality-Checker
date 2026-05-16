@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type FormEvent } from 'react';
+import { useState, useRef, useEffect, useCallback, type FormEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileText,
@@ -16,8 +16,8 @@ import {
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { fraudAPI, type FraudResult } from '../services/api';
-import { FraudDetectionLoading } from '../components';
+import { type FraudResult, type FraudCheckPayload } from '../services/api';
+import { FraudDetection } from '../components';
 
 type VerifyTab = 'text' | 'url' | 'image';
 
@@ -34,6 +34,7 @@ export function VerifyPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<FraudResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [streamPayload, setStreamPayload] = useState<FraudCheckPayload | null>(null);
 
   // ─── Auto-scroll ref ────────────────────────────
   const resultRef = useRef<HTMLDivElement>(null);
@@ -76,46 +77,33 @@ export function VerifyPage() {
     });
   };
 
-  // ─── Core Analysis Function ──────────────────────
+  // ─── Core Analysis Function (SSE-based) ──────────
   const runAnalysis = async (payload: Record<string, unknown>) => {
     setError(null);
     setResult(null);
     setIsAnalyzing(true);
 
-    try {
-      const response = await fraudAPI.check({
-        ...payload,
-        ...(guestSessionId && !isAuthenticated ? { guestSessionId } : {}),
-      } as never);
-      // The backend stores the full report; we extract the result portion
-      setResult(response.data.data.result);
-    } catch (err: unknown) {
-      if (
-        typeof err === 'object' &&
-        err !== null &&
-        'response' in err
-      ) {
-        const axiosErr = err as { response?: { status?: number; data?: { message?: string } } };
-        const status = axiosErr.response?.status;
-        const message = axiosErr.response?.data?.message;
+    // Build the FraudCheckPayload and start the SSE stream
+    const fullPayload = {
+      ...payload,
+      ...(guestSessionId && !isAuthenticated ? { guestSessionId } : {}),
+    } as FraudCheckPayload;
 
-        if (status === 401) {
-          setError('Your session has expired. Please sign in again.');
-          setTimeout(() => navigate('/login', { replace: true }), 2000);
-        } else if (status === 503) {
-          setError('The detection engine is currently unavailable. Please try again in a few minutes.');
-        } else if (status === 502) {
-          setError('Failed to communicate with the detection engine. The server may be starting up.');
-        } else {
-          setError(message || 'Analysis failed. Please try again.');
-        }
-      } else {
-        setError('Network error. Please check your connection and try again.');
-      }
-    } finally {
-      setIsAnalyzing(false);
-    }
+    setStreamPayload(fullPayload);
   };
+
+  // ─── SSE Callbacks ───────────────────────────────
+  const handleStreamCompleted = useCallback((fraudResult: FraudResult) => {
+    setResult(fraudResult);
+    setIsAnalyzing(false);
+    setStreamPayload(null);
+  }, []);
+
+  const handleStreamError = useCallback((message: string) => {
+    setError(message || 'Analysis failed. Please try again.');
+    setIsAnalyzing(false);
+    setStreamPayload(null);
+  }, []);
 
   // ─── Auto-scroll when result or loading appears ──
   useEffect(() => {
@@ -169,7 +157,7 @@ export function VerifyPage() {
         </Link>
         <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 dark:text-gray-900 mb-3 sm:mb-4">Verification Center</h1>
         <p className="text-slate-600 dark:text-gray-600 text-sm sm:text-lg max-w-2xl">
-          Select a verification method below. Our agentic engine powered by Groq Llama 3 will analyze the content and detect any fabrications or misleading claims.
+          Select a verification method below. Our agentic engine powered by OpenRouter AI will analyze the content and detect any fabrications or misleading claims.
         </p>
         {isGuest && (
           <motion.div
@@ -354,9 +342,9 @@ export function VerifyPage() {
           )}
         </AnimatePresence>
 
-        {/* ─── Loading Skeleton ──────────────────────── */}
+        {/* ─── SSE Stream Loading ──────────────────────── */}
         <AnimatePresence>
-          {isAnalyzing && (
+          {isAnalyzing && streamPayload && (
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
@@ -365,7 +353,11 @@ export function VerifyPage() {
               className="mt-10"
               ref={resultRef}
             >
-              <FraudDetectionLoading />
+              <FraudDetection
+                payload={streamPayload}
+                onCompleted={handleStreamCompleted}
+                onError={handleStreamError}
+              />
             </motion.div>
           )}
         </AnimatePresence>
