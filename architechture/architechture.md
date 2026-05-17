@@ -31,7 +31,7 @@ This separates concerns into three distinct tiers:
 * **Framework:** FastAPI, utilized for its asynchronous capabilities (`asyncio`) which are crucial for non-blocking HTTP requests to external ML providers.
 * **Scraping / Text Extraction:** Jina AI (inferred via `reader.py`) to bypass anti-bot protections, strip HTML, and extract clean semantic text from raw URLs.
 * **Evidence Gathering:** Serper.dev API (`scout.py`) to perform live Google searches, gathering real-time corroborating or conflicting evidence.
-* **ML Inference / NLP:** Groq API (`analyst.py`) leveraging high-speed LLMs (e.g., `llama-3.1-8b-instant`). The LLM is used as a zero-shot/few-shot classifier and textual entailment engine to weigh the article's claims against the scouted evidence.
+* **ML Inference / NLP:** OpenRouter API (`analyst.py`) leveraging high-speed Llama models. The LLM is used as a zero-shot/few-shot classifier and textual entailment engine to weigh the article's claims against the scouted evidence.
 
 **Architectural Rationale:** Node.js is optimal for handling asynchronous CRUD operations, auth, and thousands of concurrent lightweight connections. However, Node is not ideal for blocking operations or complex data pipelines. Offloading the NLP pipeline to Python ensures that heavy text processing and API polling do not block the event loop of the main API Gateway, ensuring a resilient and highly scalable system.
 
@@ -51,7 +51,7 @@ Based on the repository tree, the core modules map to the following responsibili
   * **`services/detector.py`**: The orchestrator. It receives the payload from Node.js and manages the execution flow of the pipeline.
   * **`services/reader.py` (Ingestion & Pre-processing)**: Takes a raw URL, fetches the DOM, removes boilerplate (navbars, ads), and tokenizes/cleans the text into a machine-readable string.
   * **`services/scout.py` (Data Augmentation)**: Extracts key entities and claims from the text, generating search queries to fetch external grounding data (live news, fact-checking sites).
-  * **`services/analyst.py` (Inference)**: Constructs a highly structured prompt combining the original article text with the context gathered by the `scout`. It queries the Groq LLM to perform logical deduction, generating a JSON response containing authenticity scores, detected bias, and specific red flags.
+  * **`services/analyst.py` (Inference)**: Constructs a highly structured prompt combining the original article text with the context gathered by the `scout`. It queries the OpenRouter LLM to perform logical deduction, generating a JSON response containing authenticity scores, detected bias, and specific red flags.
 
 ---
 
@@ -64,7 +64,7 @@ The following outlines the lifecycle of a standard verification request:
 3. **Internal Dispatch:** The Gateway forwards the standardized payload via an internal HTTP POST request to the Python Engine's FastAPI endpoint.
 4. **Text Extraction (`reader.py`):** If a URL was provided, the Python engine fetches and sanitizes the article's text.
 5. **Evidence Scouting (`scout.py`):** Key claims are passed to a search API to retrieve external, real-world context.
-6. **LLM Analysis (`analyst.py`):** The clean text and external context are passed to the Groq LLM. The model performs textual entailment and outputs a structured JSON assessment.
+6. **LLM Analysis (`analyst.py`):** The clean text and external context are passed to the OpenRouter LLM. The model performs textual entailment and outputs a structured JSON assessment.
 7. **Persistence:** The Python Engine returns the JSON payload to the Node.js Gateway. The Gateway updates the `VerificationHistory` record in MongoDB from "Pending" to "Completed", attaching the results.
 8. **Client Response:** The Gateway forwards the final Reality Check verdict to the frontend, where the React components render the visual dashboard, scores, and evidence breakdown.
 
@@ -81,7 +81,7 @@ graph TD
     APIGW -->|Internal HTTP| PyEngine[Python FastAPI Engine]
     PyEngine -->|Scraping / Text Extraction| TargetURL[Target Article URL]
     PyEngine -->|Search Queries| SerperAPI[Serper.dev Web Search]
-    PyEngine -->|LLM Inference| GroqAPI[Groq LLM API]
+    PyEngine -->|LLM Inference| OpenRouterAPI[OpenRouter LLM API]
     
     classDef client fill:#61DAFB,stroke:#333,stroke-width:2px,color:#000;
     classDef node fill:#68A063,stroke:#333,stroke-width:2px,color:#fff;
@@ -93,7 +93,7 @@ graph TD
     class APIGW node;
     class PyEngine python;
     class DB db;
-    class TargetURL,SerperAPI,GroqAPI external;
+    class TargetURL,SerperAPI,OpenRouterAPI external;
 ```
 
 ### Data Flow Diagram (DFD)
@@ -111,7 +111,7 @@ stateDiagram-v2
     state "Python ML Engine" as MLEngine {
         ForwardRequest --> ReaderService: reader.py (Extract Clean Text)
         ReaderService --> ScoutService: scout.py (Find Corroborating Evidence)
-        ScoutService --> AnalystService: analyst.py (Groq LLM Processing)
+        ScoutService --> AnalystService: analyst.py (OpenRouter LLM Processing)
         AnalystService --> Structuring: Format JSON Verdict
     }
     

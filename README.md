@@ -19,7 +19,7 @@
 <br>
 
 
-**Verifi*** is a sophisticated, full-stack platform designed to combat the global epidemic of misinformation. Built on a modern microservices architecture, Verifi processes multimodal inputs—text, URLs, and images—using an **Agentic AI Pipeline** powered by **OpenRouter (Llama 3)**, **Serper.dev**, and **Jina AI** to extract underlying claims, crawl the live web for evidence, and evaluate veracity.
+**Verifi*** is a sophisticated, full-stack platform designed to combat the global epidemic of misinformation. Built on a modern microservices architecture, Verifi processes multimodal inputs—text, URLs, and images—using an **Agentic AI Pipeline** powered by **OpenRouter (Llama models)**, **Serper.dev**, **Jina AI**, and **Sightengine** to extract underlying claims, crawl the live web for evidence, and evaluate veracity.
 
 ---
 
@@ -32,7 +32,8 @@ Verifi is engineered for scale and performance, divided into three core pillars:
 3.  **Agentic Python Engine (The Analyst)**: A high-performance Python/FastAPI microservice dedicated to computational intelligence. It employs an agentic pipeline:
     *   **The Scout**: Uses Serper.dev to search the live web for context.
     *   **The Reader**: Uses Jina AI Reader to scrape exact content from web pages.
-    *   **The Analyst**: Uses OpenRouter (Llama 3.1 8B Instant) to process evidence and verify the claim in real-time.
+    *   **The Image Analyzer**: Uses Sightengine API and Vision models to authenticate images.
+    *   **The Analyst**: Uses OpenRouter (Llama models) to process evidence and verify the claim in real-time.
 
 ---
 
@@ -42,7 +43,7 @@ Verifi is engineered for scale and performance, divided into three core pillars:
 | :--- | :--- |
 | **Frontend** | React 18+, Vite, TypeScript, Tailwind CSS, Framer Motion, Axios |
 | **API Gateway** | Node.js, Express, MongoDB (Mongoose), Passport.js, JWT, Nodemailer |
-| **Agentic Engine** | Python 3.10+, FastAPI, Uvicorn, OpenRouter API (Llama 3), Serper API, Jina AI |
+| **Agentic Engine** | Python 3.10+, FastAPI, Uvicorn, OpenRouter API (Llama models), Serper API, Jina AI, Sightengine API |
 
 ---
 
@@ -116,9 +117,9 @@ You will need to configure `.env` files in each service directory. Key variables
 
 ### `backend/python-engine/.env`
 - `PORT` (e.g., 8000)
-- `OPENROUTER_API_KEY` (Required for Llama 3 Inference)
+- `OPENROUTER_API_KEY` (Required for Llama Inference)
 - `SERPER_API_KEY` (Required for live web search)
--  `JINA AI` (Required for live check)
+- `SIGHTENGINE_API_USER` & `SIGHTENGINE_API_SECRET` (Required for AI image detection)
 - `ALLOWED_ORIGINS` (e.g., `http://localhost:5000`)
 
 ---
@@ -127,7 +128,7 @@ You will need to configure `.env` files in each service directory. Key variables
 
 - 🌙 **Cinematic UI**: Premium dark/light mode with fluid interactions.
 - 🔐 **Secure Auth**: Multi-layered authentication via JWT and Google OAuth2.
-- 🤖 **Agentic Fact-Checking**: A multi-agent AI pipeline using OpenRouter, Serper, and Jina AI for high-accuracy verification.
+- 🤖 **Agentic Fact-Checking**: A multi-agent AI pipeline using OpenRouter, Serper, Sightengine, and Jina AI for high-accuracy verification.
 - ⚡ **Real-time Streaming**: Instantaneous claim extraction and veracity scoring streamed to the client.
 - 💾 **Evidence Repository**: Save verified reports to your personal dashboard history.
 - 📚 **Developer Docs**: Built-in comprehensive documentation and architectural guides.
